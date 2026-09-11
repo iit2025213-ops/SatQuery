@@ -1,0 +1,77 @@
+# ==============================================================================
+# Node / React (Frontend)
+# ==============================================================================
+node_modules/
+dist/
+build/
+.npm
+.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ==============================================================================
+# Python (Backend)
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+venv/
+.venv/
+env/
+.env_back/
+
+# ==============================================================================
+# Secrets & Environment Variables (CRITICAL)
+# ==============================================================================
+.env
+.env.*
+!.env.example
+secrets/
+google-earth-engine-key.json
+*.pem
+*.key
+
+# ==============================================================================
+# IDEs and OS Files
+# ==============================================================================
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+
+# ==============================================================================
+# Database / Local Storage
+# ==============================================================================
+*.sqlite3
+*.db
+supabase/.temp/

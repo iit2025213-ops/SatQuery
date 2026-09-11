@@ -1,0 +1,46 @@
+# docker-compose.yml - For local development
+
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - LOG_LEVEL=DEBUG
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - AI_BRAIN_URL=${AI_BRAIN_URL}
+    volumes:
+      - .:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    env_file:
+      - .env
+    networks:
+      - satquery-network
+
+  # Optional: PostgreSQL for local testing
+  # postgres:
+  #   image: postgres:15
+  #   ports:
+  #     - "5432:5432"
+  #   environment:
+  #     POSTGRES_DB: satquery
+  #     POSTGRES_PASSWORD: satquery
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - satquery-network
+
+networks:
+  satquery-network:
+    driver: bridge
+
+# volumes:
+#   postgres_data:

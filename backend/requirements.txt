@@ -1,0 +1,52 @@
+# requirements.txt
+
+# Core
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic
+pydantic-settings
+email-validator
+
+# Database
+supabase
+
+# Storage
+cloudinary
+
+# Authentication
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+
+# WebSocket
+websockets
+
+# Logging
+python-json-logger
+
+# Utilities
+httpx
+requests
+Pillow>=10.3.0
+
+# Geospatial
+shapely
+pyproj
+earthengine-api
+pystac-client
+
+# Terrain Processing
+numpy
+rasterio
+scikit-image
+scipy
+trimesh
+pygltflib
+imageio
+imageio[ffmpeg]
+
+# Testing
+pytest
+pytest-asyncio
+pytest-cov
