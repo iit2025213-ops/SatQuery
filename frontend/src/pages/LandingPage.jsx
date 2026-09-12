@@ -6,7 +6,7 @@ const LandingPage = () => {
   const canvasRef = useRef(null);
   const videoRef = useRef(null);
 
-  // Entrance Animation Driver
+
   useEffect(() => {
     let timeoutIds = [];
     const runAnimations = () => {
@@ -185,3 +185,4 @@ const LandingPage = () => {
 };
 
 export default LandingPage;
+// Done landing page

@@ -90,7 +90,7 @@ export default function AOIMap({ onBoundsChange }) {
               setViewState(prev => ({ ...prev, pitch: newIs3D ? 60 : 0 }));
             }} 
           />
-          Enable 3D Terrain
+          Enable 3D View
         </label>
       </div>
     </div>
