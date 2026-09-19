@@ -88,159 +88,162 @@ export default function MyUploadsPage() {
 
   return (
     <DashboardLayout>
-      <div className="frame" style={{ overflowY: 'auto' }}>
-        <header className="nav">
-          <a href="#" className="brand" aria-label="SatQuery home">
-            <svg className="brand-mark" viewBox="0 0 34 34" fill="none">
-              <circle cx="17" cy="17" r="17" fill="#9C86CE"/>
-              <circle cx="17" cy="17" r="8.6" fill="#FFFFFF"/>
-              <circle cx="17" cy="17" r="3.7" fill="#151519"/>
-            </svg>
-            <span className="brand-word">SatQuery</span>
-          </a>
-        </header>
-
-        <main style={{
-          flex: 1, overflowY: 'auto',
-          padding: 'calc(32*var(--u)) calc(40*var(--u)) calc(48*var(--u))',
-          display: 'flex', flexDirection: 'column', gap: 'calc(24*var(--u))',
-        }}>
-          {/* Header row */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-            <div>
-              <h1 style={{ fontSize: 'calc(28*var(--u))', fontWeight: 600, color: '#fff', letterSpacing: '-0.01em', marginBottom: 'calc(6*var(--u))' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '40px 48px', display: 'flex', flexDirection: 'column' }}>
+        
+        {/* Header row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '32px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: '32px', height: '32px' }}>
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <h1 style={{ fontSize: '28px', fontWeight: 600, color: '#fff', letterSpacing: '-0.01em', margin: 0 }}>
                 My Uploads
               </h1>
-              <p style={{ fontSize: 'calc(13*var(--u))', color: 'rgba(255,255,255,.45)' }}>
-                Satellite images, documents and data files you have uploaded.
-              </p>
             </div>
-
-            {/* Upload button */}
-            <div>
-              <input ref={fileInputRef} type="file" multiple style={{ display: 'none' }}
-                onChange={handleFileChange}
-                accept="image/*,.pdf,.txt,.csv,.json,.geojson,.tif,.tiff" />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 'calc(8*var(--u))',
-                  background: uploading ? 'rgba(255,255,255,.06)' : 'rgba(255,255,255,.10)',
-                  border: '1px solid rgba(255,255,255,.14)',
-                  borderRadius: 'calc(10*var(--u))',
-                  color: '#fff', cursor: uploading ? 'wait' : 'pointer',
-                  fontSize: 'calc(13*var(--u))', fontWeight: 500,
-                  padding: 'calc(10*var(--u)) calc(18*var(--u))',
-                  transition: 'background .18s',
-                }}
-              >
-                {uploading ? (
-                  <span>Uploading...</span>
-                ) : (
-                  <>
-                    <svg viewBox="0 0 16 16" fill="none" style={{ width: 'calc(14*var(--u))' }}>
-                      <path d="M8 11V3M8 3L5 6M8 3l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M3 13h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                    </svg>
-                    Upload Files
-                  </>
-                )}
-              </button>
-            </div>
+            <p style={{ fontSize: '14px', color: '#a1a1aa', margin: 0 }}>
+              Manage your satellite images, documents, and data files.
+            </p>
           </div>
 
-          {uploadError && (
-            <div style={{ color: '#f87171', fontSize: 'calc(12*var(--u))' }}>{uploadError}</div>
-          )}
+          {/* Upload button */}
+          <div>
+            <input ref={fileInputRef} type="file" multiple style={{ display: 'none' }}
+              onChange={handleFileChange}
+              accept="image/*,.pdf,.txt,.csv,.json,.geojson,.tif,.tiff" />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                background: 'linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%)',
+                border: 'none', borderRadius: '999px',
+                color: '#fff', cursor: uploading ? 'wait' : 'pointer',
+                fontSize: '14px', fontWeight: 500,
+                padding: '10px 20px',
+                boxShadow: '0 4px 14px rgba(59, 130, 246, 0.4)',
+                transition: 'opacity .2s',
+                opacity: uploading ? 0.7 : 1
+              }}
+            >
+              {uploading ? (
+                <span>Uploading...</span>
+              ) : (
+                <>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px' }}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  Upload Files
+                </>
+              )}
+            </button>
+          </div>
+        </div>
 
-          {loading && (
-            <div style={{ color: 'rgba(255,255,255,.4)', fontSize: 'calc(13*var(--u))' }}>Loading uploads...</div>
-          )}
+        {uploadError && (
+          <div style={{ color: '#f87171', fontSize: '14px', marginBottom: '16px' }}>{uploadError}</div>
+        )}
 
-          {error && (
-            <div style={{ color: '#f87171', fontSize: 'calc(13*var(--u))' }}>{error}</div>
-          )}
+        {loading && (
+          <div style={{ color: 'rgba(255,255,255,.4)', fontSize: '14px' }}>Loading uploads...</div>
+        )}
 
-          {!loading && assets.length === 0 && (
-            <div style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              gap: 'calc(12*var(--u))', marginTop: 'calc(60*var(--u))',
-              color: 'rgba(255,255,255,.30)',
-            }}>
-              <svg viewBox="0 0 48 48" fill="none" style={{ width: 'calc(48*var(--u))', opacity: 0.25 }}>
-                <path d="M24 32V16M24 16L17 23M24 16l7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M8 36h32" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-              <p style={{ fontSize: 'calc(14*var(--u))' }}>No files uploaded yet.</p>
-              <p style={{ fontSize: 'calc(12*var(--u))' }}>Upload satellite images, PDFs, or data files using the button above.</p>
-            </div>
-          )}
+        {error && (
+          <div style={{ color: '#f87171', fontSize: '14px' }}>{error}</div>
+        )}
 
-          {/* Assets grid */}
-          {!loading && assets.length > 0 && (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(calc(240*var(--u)), 1fr))',
-              gap: 'calc(10*var(--u))',
-            }}>
-              {assets.map(asset => (
+        {!loading && assets.length === 0 && (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: '12px', marginTop: '60px', color: 'rgba(255,255,255,.30)',
+          }}>
+            <svg viewBox="0 0 48 48" fill="none" style={{ width: '48px', opacity: 0.25 }}>
+              <path d="M24 32V16M24 16L17 23M24 16l7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M8 36h32" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            <p style={{ fontSize: '14px', margin: 0 }}>No files uploaded yet.</p>
+          </div>
+        )}
+
+        {/* Assets grid */}
+        {!loading && assets.length > 0 && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+            gap: '16px',
+          }}>
+            {assets.map(asset => {
+              const isPdf = asset.filename.toLowerCase().endsWith('.pdf');
+              const iconColor = isPdf ? '#ef4444' : '#14b8a6';
+              const ext = asset.filename.split('.').pop().toUpperCase();
+              
+              return (
                 <div key={asset.asset_id} style={{
-                  background: 'rgba(255,255,255,.05)',
-                  border: '1px solid rgba(255,255,255,.09)',
-                  borderRadius: 'calc(14*var(--u))',
-                  padding: 'calc(16*var(--u))',
-                  display: 'flex', flexDirection: 'column', gap: 'calc(8*var(--u))',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                  borderRadius: '16px',
+                  padding: '16px 20px',
+                  display: 'flex', flexDirection: 'column',
                   position: 'relative',
                 }}>
                   {/* File icon + name */}
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'calc(10*var(--u))' }}>
-                    <span style={{ fontSize: 'calc(20*var(--u))', lineHeight: 1, flexShrink: 0 }}>
-                      {fileIcon(asset.filename)}
-                    </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div style={{
+                      width: '40px', height: '40px', borderRadius: '10px', flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: iconColor, color: '#fff'
+                    }}>
+                      {isPdf ? (
+                        <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: '20px' }}>
+                          <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: '20px' }}>
+                          <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                        </svg>
+                      )}
+                    </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{
-                        fontSize: 'calc(12.5*var(--u))', fontWeight: 500,
-                        color: 'rgba(255,255,255,.85)',
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        fontSize: '14px', fontWeight: 500, color: '#f3f4f6', margin: 0,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                       }}>
                         {asset.filename}
                       </p>
-                      <p style={{ fontSize: 'calc(10.5*var(--u))', color: 'rgba(255,255,255,.35)', marginTop: '2px' }}>
-                        {asset.modality} · {formatBytes(asset.file_size_bytes)}
+                      <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0 0' }}>
+                        {ext} · {formatBytes(asset.file_size_bytes)}
                       </p>
                     </div>
                   </div>
 
-                  {/* Meta */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 'calc(10.5*var(--u))', color: 'rgba(255,255,255,.28)' }}>
+                  {/* Meta Footer */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '24px' }}>
+                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>
                       {relativeTime(asset.created_at)}
                     </span>
-                    <div style={{ display: 'flex', gap: 'calc(6*var(--u))' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       {asset.file_url && (
                         <a href={asset.file_url} target="_blank" rel="noopener noreferrer" style={{
-                          fontSize: 'calc(10.5*var(--u))', color: '#60a5fa',
-                          textDecoration: 'none',
+                          fontSize: '13px', fontWeight: 500, color: '#3b82f6', textDecoration: 'none'
                         }}>View</a>
                       )}
+                      {/* Replace 3 dots menu with Delete button */}
                       <button
                         onClick={() => handleDelete(asset.asset_id)}
                         disabled={deleting === asset.asset_id}
+                        title="Delete file"
                         style={{
-                          fontSize: 'calc(10.5*var(--u))', color: 'rgba(248,113,113,.7)',
-                          background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                          background: 'none', border: 'none', padding: 0,
+                          color: '#ef4444', cursor: 'pointer', fontSize: '13px', fontWeight: 500
                         }}
                       >
-                        {deleting === asset.asset_id ? '...' : 'Delete'}
+                         {deleting === asset.asset_id ? '...' : 'Delete'}
                       </button>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </main>
+              );
+            })}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

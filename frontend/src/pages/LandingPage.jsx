@@ -1,8 +1,24 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function LandingPage() {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (event.data === 'NAVIGATE_AUTH') {
+        navigate('/auth');
+      } else if (event.data === 'NAVIGATE_HOW_IT_WORKS') {
+        navigate('/how-it-works');
+      } else if (event.data === 'NAVIGATE_ARCHITECTURE') {
+        navigate('/architecture');
+      } else if (event.data === 'NAVIGATE_CAPABILITIES') {
+        navigate('/capabilities');
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [navigate]);
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-black">
@@ -11,7 +27,7 @@ export default function LandingPage() {
         We do this because standard React cannot easily compile 2.8MB of raw inline WebGL code.
       */}
       <iframe 
-        src="/globe.html" 
+        src={`/globe_v2.html?v=${Date.now()}`} 
         className="absolute inset-0 w-full h-full border-none"
         title="SatQuery 3D Globe"
       />
@@ -22,32 +38,33 @@ export default function LandingPage() {
         without the iframe causing page reloads or cross-origin errors!
       */}
       <div className="absolute top-0 left-0 w-full p-6 flex justify-between items-center pointer-events-none z-50">
-        <div className="flex items-center gap-3">
-          <span className="font-bold text-xl tracking-wider text-white font-mono uppercase drop-shadow-md">SATQUERY</span>
+        <div className="flex items-center gap-3 pointer-events-auto ml-6 mt-4">
+          <a href="#hero" onClick={(e) => e.preventDefault()} style={{
+            fontFamily: '"Playfair Display", serif',
+            fontSize: '28px',
+            fontWeight: 800,
+            letterSpacing: '-.03em',
+            color: '#fff',
+            textDecoration: 'none',
+            lineHeight: 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            textShadow: '0 1px 4px rgba(0,0,0,0.8)'
+          }}>
+            SatQuery <em style={{
+              fontStyle: 'normal',
+              fontWeight: 600,
+              fontSize: '15px',
+              letterSpacing: '.12em',
+              textTransform: 'uppercase',
+              background: 'linear-gradient(90deg, #9ae6f2, #63c9de)',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent'
+            }}>AI</em>
+          </a>
         </div>
-        
-        <div className="flex items-center gap-8 pointer-events-auto">
-          <button 
-            onClick={() => navigate('/auth')}
-            className="px-6 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-semibold backdrop-blur-md border border-white/20 transition-all shadow-lg"
-          >
-            Sign In to Dashboard
-          </button>
-        </div>
-      </div>
-      
-      {/* 
-        Optional: Bottom gradient to blend the iframe nicely if needed, 
-        or a central call-to-action button right over the globe.
-      */}
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 pointer-events-auto z-50">
-        <button 
-          onClick={() => navigate('/auth')}
-          className="px-8 py-3.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-[0_0_30px_rgba(37,99,235,0.4)] transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
-        >
-          Initialize Telemetry
-          <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
-        </button>
       </div>
     </div>
   );

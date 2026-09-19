@@ -54,127 +54,155 @@ export default function DocumentsPage() {
 
   return (
     <DashboardLayout>
-      <div className="frame" style={{ overflowY: 'auto' }}>
-        <header className="nav">
-          <a href="#" className="brand" aria-label="SatQuery home">
-            <svg className="brand-mark" viewBox="0 0 34 34" fill="none">
-              <circle cx="17" cy="17" r="17" fill="#9C86CE"/>
-              <circle cx="17" cy="17" r="8.6" fill="#FFFFFF"/>
-              <circle cx="17" cy="17" r="3.7" fill="#151519"/>
-            </svg>
-            <span className="brand-word">SatQuery</span>
-          </a>
-        </header>
-
-        <main style={{
-          flex: 1, overflowY: 'auto',
-          padding: 'calc(32*var(--u)) calc(40*var(--u)) calc(48*var(--u))',
-          display: 'flex', flexDirection: 'column', gap: 'calc(32*var(--u))',
-        }}>
-          {/* Title */}
-          <div>
-            <h1 style={{ fontSize: 'calc(28*var(--u))', fontWeight: 600, color: '#fff', letterSpacing: '-0.01em', marginBottom: 'calc(6*var(--u))' }}>
-              Documents
-            </h1>
-            <p style={{ fontSize: 'calc(13*var(--u))', color: 'rgba(255,255,255,.45)' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '40px 48px', display: 'flex', flexDirection: 'column', gap: '48px' }}>
+        
+        {/* Header row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: '32px', height: '32px' }}>
+                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+              <h1 style={{ fontSize: '28px', fontWeight: 600, color: '#fff', letterSpacing: '-0.01em', margin: 0 }}>
+                Documents
+              </h1>
+            </div>
+            <p style={{ fontSize: '14px', color: '#a1a1aa', margin: 0 }}>
               Analysis reports and generated documents from your satellite queries.
             </p>
           </div>
+        </div>
 
-          {loading && (
-            <div style={{ color: 'rgba(255,255,255,.4)', fontSize: 'calc(13*var(--u))' }}>Loading documents...</div>
-          )}
+        {loading && (
+          <div style={{ color: 'rgba(255,255,255,.4)', fontSize: '14px' }}>Loading documents...</div>
+        )}
 
-          {error && (
-            <div style={{ color: '#f87171', fontSize: 'calc(13*var(--u))' }}>{error}</div>
-          )}
+        {error && (
+          <div style={{ color: '#f87171', fontSize: '14px' }}>{error}</div>
+        )}
 
-          {/* All Jobs section */}
-          {!loading && (
-            <div>
-              <p style={{ fontSize: 'calc(10.5*var(--u))', fontWeight: 500, letterSpacing: '.10em', color: 'rgba(255,255,255,.30)', textTransform: 'uppercase', marginBottom: 'calc(12*var(--u))' }}>
-                All Analysis Jobs
-              </p>
-
-              {jobs.length === 0 && (
-                <p style={{ fontSize: 'calc(13*var(--u))', color: 'rgba(255,255,255,.35)' }}>No queries submitted yet.</p>
-              )}
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'calc(6*var(--u))' }}>
-                {jobs.map(job => (
-                  <div key={job.job_id} style={{
-                    background: 'rgba(255,255,255,.05)',
-                    border: '1px solid rgba(255,255,255,.09)',
-                    borderRadius: 'calc(12*var(--u))',
-                    padding: 'calc(14*var(--u)) calc(18*var(--u))',
-                    display: 'flex', alignItems: 'center', gap: 'calc(12*var(--u))',
-                  }}>
-                    <span style={{ width: 'calc(8*var(--u))', height: 'calc(8*var(--u))', borderRadius: '50%', background: statusColor(job.status), flexShrink: 0 }}/>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 'calc(13*var(--u))', color: 'rgba(255,255,255,.80)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {job.query}
-                      </p>
-                      <p style={{ fontSize: 'calc(11*var(--u))', color: 'rgba(255,255,255,.30)', marginTop: '2px' }}>
-                        {job.status} · {relativeTime(job.created_at)}
-                      </p>
-                    </div>
-                    {job.final_answer && (
-                      <div style={{
-                        fontSize: 'calc(10.5*var(--u))', color: 'rgba(255,255,255,.55)',
-                        maxWidth: 'calc(200*var(--u))', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}>
-                        {job.final_answer}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Generated Documents section */}
-          {!loading && documents.length > 0 && (
-            <div>
-              <p style={{ fontSize: 'calc(10.5*var(--u))', fontWeight: 500, letterSpacing: '.10em', color: 'rgba(255,255,255,.30)', textTransform: 'uppercase', marginBottom: 'calc(12*var(--u))' }}>
-                Generated Reports
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'calc(6*var(--u))' }}>
-                {documents.map(doc => (
+        {/* Generated Documents section (Grid Layout matching My Uploads) */}
+        {!loading && documents.length > 0 && (
+          <div>
+            <p style={{ fontSize: '12px', fontWeight: 500, letterSpacing: '.10em', color: 'rgba(255,255,255,.30)', textTransform: 'uppercase', marginBottom: '20px', margin: '0 0 20px 0' }}>
+              Generated Reports
+            </p>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+              gap: '16px',
+            }}>
+              {documents.map(doc => {
+                const isPdf = doc.format?.toLowerCase() === 'pdf';
+                const iconColor = isPdf ? '#ef4444' : '#60a5fa';
+                
+                return (
                   <div key={doc.document_id} style={{
-                    background: 'rgba(255,255,255,.05)',
-                    border: '1px solid rgba(255,255,255,.09)',
-                    borderRadius: 'calc(12*var(--u))',
-                    padding: 'calc(14*var(--u)) calc(18*var(--u))',
-                    display: 'flex', alignItems: 'center', gap: 'calc(12*var(--u))',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.06)',
+                    borderRadius: '16px',
+                    padding: '16px 20px',
+                    display: 'flex', flexDirection: 'column',
+                    position: 'relative',
                   }}>
-                    <svg viewBox="0 0 16 16" fill="none" style={{ width: 'calc(16*var(--u))', flexShrink: 0, opacity: 0.6 }}>
-                      <path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-                      <path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-                    </svg>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 'calc(13*var(--u))', color: 'rgba(255,255,255,.80)' }}>
-                        {doc.doc_type} · <span style={{ color: 'rgba(255,255,255,.45)' }}>{doc.format?.toUpperCase()}</span>
-                      </p>
-                      <p style={{ fontSize: 'calc(11*var(--u))', color: 'rgba(255,255,255,.30)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {/* File icon + name */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <div style={{
+                        width: '40px', height: '40px', borderRadius: '10px', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: iconColor, color: '#fff'
+                      }}>
+                        <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: '20px' }}>
+                          <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                        </svg>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{
+                          fontSize: '14px', fontWeight: 500, color: '#f3f4f6', margin: 0,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                        }} title={doc.doc_type}>
+                          {doc.doc_type || 'Document'}
+                        </p>
+                        <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0 0' }}>
+                          {doc.format?.toUpperCase() || 'FILE'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Meta Footer */}
+                    <div style={{ display: 'flex', flexDirection: 'column', marginTop: '20px', gap: '16px' }}>
+                      <p style={{ fontSize: '12px', color: 'rgba(255,255,255,.5)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={doc.jobQuery}>
                         From: {doc.jobQuery}
                       </p>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '12px', color: '#9ca3af' }}>
+                          {relativeTime(doc.jobCreatedAt)}
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          {doc.url && (
+                            <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{
+                              fontSize: '13px', fontWeight: 500, color: '#3b82f6', textDecoration: 'none'
+                            }}>View</a>
+                          )}
+                          {/* Delete button (functionality to be added later if needed) */}
+                          <button style={{
+                            background: 'none', border: 'none', padding: 0,
+                            color: '#ef4444', cursor: 'pointer', fontSize: '13px', fontWeight: 500
+                          }}>
+                            Delete
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    {doc.url && (
-                      <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{
-                        fontSize: 'calc(11*var(--u))', color: '#60a5fa',
-                        textDecoration: 'none', border: '1px solid rgba(96,165,250,.25)',
-                        borderRadius: 'calc(6*var(--u))', padding: 'calc(4*var(--u)) calc(10*var(--u))',
-                        flexShrink: 0,
-                      }}>
-                        Open ↗
-                      </a>
-                    )}
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
-          )}
-        </main>
+          </div>
+        )}
+
+        {/* All Jobs section (Glassmorphic List) */}
+        {!loading && (
+          <div>
+            <p style={{ fontSize: '12px', fontWeight: 500, letterSpacing: '.10em', color: 'rgba(255,255,255,.30)', textTransform: 'uppercase', margin: '0 0 20px 0' }}>
+              All Analysis Jobs
+            </p>
+
+            {jobs.length === 0 && (
+              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,.35)' }}>No queries submitted yet.</p>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {jobs.map(job => (
+                <div key={job.job_id} style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                  borderRadius: '16px',
+                  padding: '16px 20px',
+                  display: 'flex', alignItems: 'center', gap: '16px',
+                }}>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: statusColor(job.status), flexShrink: 0 }}/>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: '14px', fontWeight: 500, color: '#f3f4f6', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {job.query}
+                    </p>
+                    <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0 0' }}>
+                      {job.status.charAt(0).toUpperCase() + job.status.slice(1)} · {relativeTime(job.created_at)}
+                    </p>
+                  </div>
+                  {job.final_answer && (
+                    <div style={{
+                      fontSize: '13px', color: 'rgba(255,255,255,.6)',
+                      maxWidth: '400px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                      {job.final_answer}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

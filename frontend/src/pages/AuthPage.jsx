@@ -187,10 +187,11 @@ export default function AuthPage() {
                   <div className="relative">
                     <input 
                       autoComplete="username" 
-                      className="w-full h-11 px-3.5 rounded-lg bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 text-sm outline-none transition-all shadow-sm focus:border-black focus:ring-1 focus:ring-black" 
+                      className="w-full h-11 px-4 rounded-lg bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 text-sm outline-none transition-all shadow-sm focus:border-black focus:ring-1 focus:ring-black" 
                       id="identifier" 
                       name="identifier" 
-                      placeholder="  name@organization.com or username" 
+                      placeholder="name@organization.com or username" 
+                      style={{ paddingLeft: '16px', paddingRight: '16px' }}
                       required 
                       type="text"
                       value={email}
@@ -212,10 +213,11 @@ export default function AuthPage() {
                   <div className="relative flex items-center">
                     <input 
                       autoComplete="current-password" 
-                      className="w-full h-11 pl-3.5 pr-11 rounded-lg bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 text-sm outline-none transition-all shadow-sm focus:border-black focus:ring-1 focus:ring-black" 
+                      className="w-full h-11 pl-4 pr-11 rounded-lg bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 text-sm outline-none transition-all shadow-sm focus:border-black focus:ring-1 focus:ring-black" 
                       id="password" 
                       name="password" 
                       placeholder="••••••••••••" 
+                      style={{ paddingLeft: '16px' }}
                       required
                       minLength={8}
                       type={showPassword ? 'text' : 'password'}
@@ -293,6 +295,7 @@ export default function AuthPage() {
                     id="reg-email" 
                     name="reg-email" 
                     placeholder="Enter your email to get started" 
+                    style={{ paddingLeft: '16px', paddingRight: '16px' }}
                     required 
                     type="email"
                     value={email}
@@ -341,6 +344,7 @@ export default function AuthPage() {
                     id="reg-username" 
                     name="username" 
                     placeholder="Choose a username" 
+                    style={{ paddingLeft: '16px', paddingRight: '16px' }}
                     required 
                     type="text"
                     value={username}
@@ -356,6 +360,7 @@ export default function AuthPage() {
                       id="reg-password" 
                       name="password" 
                       placeholder="At least 8 characters" 
+                      style={{ paddingLeft: '16px' }}
                       required
                       minLength={8}
                       type={showRegPassword ? 'text' : 'password'}
@@ -384,6 +389,7 @@ export default function AuthPage() {
                       id="reg-confirm-password" 
                       name="confirmPassword" 
                       placeholder="Confirm your password" 
+                      style={{ paddingLeft: '16px' }}
                       required
                       minLength={8}
                       type={showConfirmPassword ? 'text' : 'password'}
