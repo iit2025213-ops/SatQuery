@@ -28,8 +28,8 @@ class Settings(BaseSettings):
     # JWT
     jwt_secret_key: str  # Min 32 characters
     jwt_algorithm: str = "HS256"
-    jwt_access_token_expire_minutes: int = 15
-    jwt_refresh_token_expire_days: int = 7
+    jwt_access_token_expire_minutes: int = 1440   # 24 hours
+    jwt_refresh_token_expire_days: int = 30        # 30 days
     
     # AI Brain
     ai_brain_url: str  # ws://your-server:8000/brain

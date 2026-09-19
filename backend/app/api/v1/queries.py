@@ -1,6 +1,6 @@
 # app/api/v1/queries.py
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, BackgroundTasks
 from datetime import datetime
 from typing import Optional
 import logging
@@ -16,6 +16,7 @@ router = APIRouter(prefix="/api/v1", tags=["queries"])
 @router.post("/queries", response_model=SubmitQueryResponse, status_code=status.HTTP_201_CREATED)
 async def submit_query(
     request: SubmitQueryRequest,
+    background_tasks: BackgroundTasks,
     user_id: str = Depends(get_current_user_id)
 ):
     """Submit a new satellite analysis query"""
@@ -36,7 +37,7 @@ async def submit_query(
             if not asset.data:
                 raise HTTPException(status_code=404, detail=f"Asset {asset_id} not found")
 
-        # Validate and persist AOI if provided
+        # Validate AOI geometry first (no DB writes yet)
         if request.aoi:
             aoi_dict = request.aoi.model_dump()
 
@@ -51,29 +52,11 @@ async def submit_query(
             area_m2, aoi_area_km2 = AOICalculator.calculate_area(aoi_dict)
             centroid = AOICalculator.calculate_centroid(aoi_dict)
 
-            # Size limit check
             size_ok, size_err = AOIValidator.check_size_limit(aoi_area_km2)
             if not size_ok:
                 raise HTTPException(status_code=400, detail=size_err)
 
-            # Persist AOI to Supabase aois table
-            aoi_id = str(uuid.uuid4())
-            supabase_client.get_admin_client().table("aois").insert({
-                "aoi_id": aoi_id,
-                "job_id": job_id,
-                "user_id": user_id,
-                "geojson": aoi_dict,
-                "bbox": aoi_bbox,
-                "area_m2": area_m2,
-                "area_km2": aoi_area_km2,
-                "centroid": list(centroid) if centroid else None,
-                "validation_status": "valid",
-                "source": "drawn",
-            }).execute()
-
-            logger.info(f"AOI saved: {aoi_id} for job {job_id}")
-
-        # Create job record with AOI injected into agent state
+        # Create job FIRST so that job_id exists before the AOI FK reference
         job_data = {
             "job_id": job_id,
             "user_id": user_id,
@@ -97,11 +80,39 @@ async def submit_query(
         }
 
         supabase_client.get_user_client().table("jobs").insert(job_data).execute()
-
         logger.info(f"Job created: {job_id} for user {user_id}")
 
-        # TODO: Start agent loop in background
-        # This will be implemented in MEGAPROMPT 4
+        # NOW persist AOI to aois table (job_id already exists in jobs)
+        if request.aoi:
+            aoi_id = str(uuid.uuid4())
+            supabase_client.get_admin_client().table("aois").insert({
+                "aoi_id": aoi_id,
+                "job_id": job_id,
+                "user_id": user_id,
+                "geojson": aoi_dict,
+                "bbox": aoi_bbox,
+                "area_m2": area_m2,
+                "area_km2": aoi_area_km2,
+                "centroid": list(centroid) if centroid else None,
+                "validation_status": "valid",
+                "source": "drawn",
+            }).execute()
+            logger.info(f"AOI saved: {aoi_id} for job {job_id}")
+
+        # Fire the GEE background worker
+        if request.aoi:
+            from app.workers.gee_worker import run_gee_analysis
+            from app.main import supabase_client as sc, cloudinary_client as cc
+            background_tasks.add_task(
+                run_gee_analysis,
+                job_id=job_id,
+                aoi_geojson=request.aoi.model_dump(),
+                user_id=user_id,
+                query_text=request.query,
+                supabase_client=sc,
+                cloudinary_client=cc,
+            )
+            logger.info(f"GEE worker queued for job {job_id}")
 
         return SubmitQueryResponse(
             job_id=job_id,

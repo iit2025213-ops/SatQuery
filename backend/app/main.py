@@ -30,6 +30,7 @@ logger = setup_logger("satquery", settings.log_level)
 # Global clients (initialized on startup)
 supabase_client = None
 cloudinary_client = None
+gee_connector = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -38,7 +39,7 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("🚀 Starting SatQuery AI Backend...")
     
-    global supabase_client, cloudinary_client
+    global supabase_client, cloudinary_client, gee_connector
     
     try:
         # Initialize Supabase client
@@ -56,11 +57,20 @@ async def lifespan(app: FastAPI):
             api_secret=settings.cloudinary_api_secret
         )
         logger.info("✅ Cloudinary client initialized")
+
+        # Initialize GEE connector
+        from app.gee.connector import GEEConnector
+        gee_connector = GEEConnector(
+            service_account_key_path=settings.gee_service_account_key_path,
+            project_id=settings.gee_project_id,
+        )
+        logger.info("✅ GEE connector initialised (auth deferred)")
         
         # Make clients globally accessible
         from app import main as main_module
         main_module.supabase_client = supabase_client
         main_module.cloudinary_client = cloudinary_client
+        main_module.gee_connector = gee_connector
         
         # Health check: Supabase connection
         try:

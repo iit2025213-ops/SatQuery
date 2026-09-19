@@ -66,6 +66,35 @@ class CloudinaryClient:
         except Exception as e:
             logger.error(f"Failed to upload artifact: {e}")
             raise
+
+    async def upload_bytes(self, image_bytes: bytes, artifact_type: str, job_id: str, filename: str = "image.png", metadata: dict = None) -> dict:
+        """Upload raw bytes (e.g. PNG from GEE getThumbURL) to Cloudinary."""
+        import io
+        try:
+            public_id = f"{self.upload_folder}/{job_id}/{artifact_type}/{filename.rsplit('.', 1)[0]}"
+
+            response = cloudinary.uploader.upload(
+                io.BytesIO(image_bytes),
+                public_id=public_id,
+                resource_type="image",
+                overwrite=True,
+                tags=[job_id, artifact_type],
+                context=metadata or {}
+            )
+
+            logger.info(f"Uploaded bytes artifact: {artifact_type} to {public_id}")
+
+            return {
+                "artifact_id": response.get("public_id"),
+                "url": response.get("secure_url"),
+                "cloudinary_public_id": response.get("public_id"),
+                "file_size_bytes": response.get("bytes"),
+                "format": response.get("format"),
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to upload bytes to Cloudinary: {e}")
+            raise
     
     def get_signed_url(self, public_id: str, expiration_minutes: int = 60) -> str:
         """Generate signed URL for artifact"""

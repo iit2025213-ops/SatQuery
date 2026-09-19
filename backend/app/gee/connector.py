@@ -432,3 +432,132 @@ class GEEConnector:
         except Exception as e:
             logger.error(f"❌ Error processing scene {scene_id}: {e}")
             return None
+
+    # ------------------------------------------------------------------
+    # Thumbnail generation (getThumbURL)
+    # ------------------------------------------------------------------
+
+    async def get_thumbnail_url(
+        self,
+        scene_id: str,
+        aoi_geojson: dict,
+        bands: List[str] = None,
+        vis_min: int = 0,
+        vis_max: int = 3000,
+        dimensions: int = 1024,
+    ) -> Optional[str]:
+        """
+        Generate a signed PNG thumbnail URL for an RGB true-color view.
+
+        Uses GEE's getThumbURL() — renders the image server-side and
+        returns a direct download link. No Cloud Storage bucket required.
+        """
+        ee = _get_ee()
+        self._ensure_authenticated()
+
+        if bands is None:
+            # Sentinel-2 RGB default
+            if "COPERNICUS" in scene_id or "S2" in scene_id:
+                bands = ["B4", "B3", "B2"]
+            else:
+                # Landsat
+                bands = ["SR_B4", "SR_B3", "SR_B2"]
+
+        try:
+            aoi_geom = self.geojson_to_ee_geometry(aoi_geojson)
+            image = ee.Image(scene_id).select(bands).clip(aoi_geom)
+
+            thumb_url = image.getThumbURL({
+                "bands": bands,
+                "region": aoi_geom,
+                "dimensions": dimensions,
+                "format": "png",
+                "min": vis_min,
+                "max": vis_max,
+            })
+
+            logger.info(f"✅ Thumbnail URL generated for scene: {scene_id}")
+            return thumb_url
+
+        except Exception as e:
+            logger.error(f"❌ Failed to generate thumbnail URL for {scene_id}: {e}")
+            return None
+
+    async def compute_ndvi_thumbnail_url(
+        self,
+        scene_id: str,
+        aoi_geojson: dict,
+        dimensions: int = 1024,
+    ) -> Optional[str]:
+        """
+        Compute NDVI and return a signed PNG thumbnail URL with
+        a red→yellow→green color palette (dead→sparse→healthy vegetation).
+        """
+        ee = _get_ee()
+        self._ensure_authenticated()
+
+        try:
+            aoi_geom = self.geojson_to_ee_geometry(aoi_geojson)
+            image = ee.Image(scene_id)
+
+            # Determine NIR and Red bands
+            if "COPERNICUS" in scene_id or "S2" in scene_id:
+                nir_band, red_band = "B8", "B4"
+            else:
+                nir_band, red_band = "SR_B5", "SR_B4"
+
+            ndvi = image.normalizedDifference([nir_band, red_band]).rename("NDVI").clip(aoi_geom)
+
+            thumb_url = ndvi.getThumbURL({
+                "bands": ["NDVI"],
+                "region": aoi_geom,
+                "dimensions": dimensions,
+                "format": "png",
+                "min": -0.2,
+                "max": 0.8,
+                "palette": ["#d73027", "#fc8d59", "#fee08b", "#91cf60", "#1a9850"],
+            })
+
+            logger.info(f"✅ NDVI thumbnail URL generated for scene: {scene_id}")
+            return thumb_url
+
+        except Exception as e:
+            logger.error(f"❌ Failed to compute NDVI thumbnail for {scene_id}: {e}")
+            return None
+
+    async def get_ndvi_stats(
+        self,
+        scene_id: str,
+        aoi_geojson: dict,
+    ) -> Optional[Dict]:
+        """Compute mean NDVI value over the AOI for a health summary."""
+        ee = _get_ee()
+        self._ensure_authenticated()
+
+        try:
+            aoi_geom = self.geojson_to_ee_geometry(aoi_geojson)
+            image = ee.Image(scene_id)
+
+            if "COPERNICUS" in scene_id or "S2" in scene_id:
+                nir_band, red_band = "B8", "B4"
+            else:
+                nir_band, red_band = "SR_B5", "SR_B4"
+
+            ndvi = image.normalizedDifference([nir_band, red_band]).rename("NDVI").clip(aoi_geom)
+
+            stats = ndvi.reduceRegion(
+                reducer=ee.Reducer.mean().combine(ee.Reducer.min(), None, True).combine(ee.Reducer.max(), None, True),
+                geometry=aoi_geom,
+                scale=100,
+                maxPixels=1e8,
+            ).getInfo()
+
+            return {
+                "mean": round(stats.get("NDVI_mean", 0), 3),
+                "min": round(stats.get("NDVI_min", 0), 3),
+                "max": round(stats.get("NDVI_max", 0), 3),
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Failed to compute NDVI stats for {scene_id}: {e}")
+            return None

@@ -15,16 +15,34 @@ function getHeaders(contentType = 'application/json') {
   return headers;
 }
 
+// On 401, clear the expired token and redirect to /auth
+function handle401() {
+  localStorage.removeItem('satquery_access_token');
+  localStorage.removeItem('satquery_refresh_token');
+  window.location.href = '/auth';
+}
+
+async function handleResponse(res) {
+  if (res.status === 401) {
+    handle401();
+    throw new Error('Session expired. Please log in again.');
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Request failed' }));
+    if (Array.isArray(err.detail)) {
+      throw new Error(err.detail.map(e => e.msg).join(', '));
+    }
+    throw new Error(err.detail || 'Request failed');
+  }
+  return res.json();
+}
+
 export async function apiGet(path) {
   const res = await fetch(`${BASE_URL}${path}`, {
     method: 'GET',
     headers: getHeaders(),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: 'Request failed' }));
-    throw new Error(err.detail || 'Request failed');
-  }
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function apiPost(path, body) {
@@ -33,11 +51,7 @@ export async function apiPost(path, body) {
     headers: getHeaders(),
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: 'Request failed' }));
-    throw new Error(err.detail || 'Request failed');
-  }
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function apiUpload(path, formData) {
@@ -51,9 +65,5 @@ export async function apiUpload(path, formData) {
     headers,
     body: formData,
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: 'Upload failed' }));
-    throw new Error(err.detail || 'Upload failed');
-  }
-  return res.json();
+  return handleResponse(res);
 }

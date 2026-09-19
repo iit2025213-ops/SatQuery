@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Map, { NavigationControl, Source } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
+import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
+import DrawControl from './DrawControl';
+import GeocoderControl from './GeocoderControl';
 
-export default function AOIMap({ onBoundsChange }) {
+export default function AOIMap({ onBoundsChange, onAoiChange }) {
   const [viewState, setViewState] = useState({
     longitude: 77.2090, // Delhi, India
     latitude: 28.6139,
@@ -13,9 +17,43 @@ export default function AOIMap({ onBoundsChange }) {
 
   const [showLabels, setShowLabels] = useState(true);
   const [is3D, setIs3D] = useState(true);
+  const [features, setFeatures] = useState({});
 
-  // We now expect VITE_MAPBOX_TOKEN instead of VITE_MAPTILER_KEY
   const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
+
+  const onUpdate = useCallback(e => {
+    setFeatures(currFeatures => {
+      const newFeatures = {...currFeatures};
+      for (const f of e.features) {
+        newFeatures[f.id] = f;
+      }
+      // Pass the last drawn feature to the parent as the AOI
+      const featureList = Object.values(newFeatures);
+      if (featureList.length > 0 && onAoiChange) {
+        onAoiChange(featureList[featureList.length - 1].geometry);
+      } else if (featureList.length === 0 && onAoiChange) {
+        onAoiChange(null);
+      }
+      return newFeatures;
+    });
+  }, [onAoiChange]);
+
+  const onDelete = useCallback(e => {
+    setFeatures(currFeatures => {
+      const newFeatures = {...currFeatures};
+      for (const f of e.features) {
+        delete newFeatures[f.id];
+      }
+      // Pass the last remaining feature to the parent as the AOI, or null if none
+      const featureList = Object.values(newFeatures);
+      if (featureList.length > 0 && onAoiChange) {
+        onAoiChange(featureList[featureList.length - 1].geometry);
+      } else if (onAoiChange) {
+        onAoiChange(null);
+      }
+      return newFeatures;
+    });
+  }, [onAoiChange]);
 
   if (!mapboxToken) {
     return <div style={{ color: 'white', padding: '20px' }}>Error: Please add VITE_MAPBOX_TOKEN to frontend/.env</div>;
@@ -27,7 +65,7 @@ export default function AOIMap({ onBoundsChange }) {
     : "mapbox://styles/mapbox/satellite-v9";
 
   return (
-    <div style={{ width: '100%', height: '500px', borderRadius: '12px', overflow: 'hidden', position: 'relative' }}>
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <Map
         {...viewState}
         onMove={evt => {
@@ -43,6 +81,23 @@ export default function AOIMap({ onBoundsChange }) {
       >
         <NavigationControl position="top-right" />
         
+        {/* Search Bar (Geocoder) */}
+        <GeocoderControl mapboxAccessToken={mapboxToken} position="top-left" />
+
+        {/* Drawing Tools */}
+        <DrawControl
+          position="top-right"
+          displayControlsDefault={false}
+          controls={{
+            polygon: true,
+            trash: true
+          }}
+          defaultMode="draw_polygon"
+          onCreate={onUpdate}
+          onUpdate={onUpdate}
+          onDelete={onDelete}
+        />
+        
         {is3D && (
           <Source
             id="mapbox-dem"
@@ -57,7 +112,7 @@ export default function AOIMap({ onBoundsChange }) {
       {/* Map Controls */}
       <div style={{
         position: 'absolute',
-        top: '10px',
+        top: '60px', /* Shifted down to make room for Geocoder */
         left: '10px',
         backgroundColor: 'rgba(0,0,0,0.8)',
         padding: '10px',

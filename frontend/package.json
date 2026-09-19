@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@mapbox/mapbox-gl-draw": "^1.5.2",
+    "@mapbox/mapbox-gl-geocoder": "^5.1.2",
     "jsonwebtoken": "^9.0.3",
     "mapbox-gl": "^3.30.0",
     "react": "^18.2.0",
