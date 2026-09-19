@@ -50,7 +50,7 @@ class CloudinaryClient:
                 resource_type=resource_type,
                 overwrite=True,
                 tags=[job_id, artifact_type],
-                metadata=metadata or {}
+                context=metadata or {}
             )
             
             logger.info(f"Uploaded artifact: {artifact_type} to {public_id}")

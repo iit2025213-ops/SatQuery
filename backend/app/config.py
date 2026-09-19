@@ -1,6 +1,6 @@
 # app/config.py
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
 class Settings(BaseSettings):
@@ -62,11 +62,11 @@ class Settings(BaseSettings):
     rate_limit_requests: int = 100
     rate_limit_period_seconds: int = 3600
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
-        # Allow extra environment variables
-        extra = "allow"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        extra="allow"
+    )
 
 # Create global settings instance
 settings = Settings()

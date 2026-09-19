@@ -1,0 +1,4 @@
+3. Interactive Data (Optional)
+If we want to take the frontend a step further, we can also display a small Line Chart in the chat UI. Since the backend calculates the NDVI (vegetation) or cloud cover for every single year, we can pass that array of numbers to the frontend. The frontend can use a library like Recharts or Chart.js to render a beautiful line graph showing the exact dip in vegetation over those 5 years, right below the video player.
+
+In summary: The frontend will feel highly interactive. The user asks a question, and they get a written analysis, a playable timelapse video, and a data chart all rendered directly in their chat interface!

@@ -12,6 +12,9 @@ logger = logging.getLogger("satquery")
 router = APIRouter(prefix="/api/v1", tags=["assets"])
 
 
+import tempfile
+import os
+
 @router.post("/assets", response_model=UploadAssetResponse)
 async def upload_asset(
     file: UploadFile = File(...),
@@ -29,13 +32,23 @@ async def upload_asset(
         # Read file
         contents = await file.read()
 
-        # Upload to Cloudinary
-        result = await cloudinary_client.upload_artifact(
-            file_path=file.filename,  # In real implementation, save temp file first
-            artifact_type="original_image",
-            job_id="assets",
-            metadata={"asset_id": asset_id}
-        )
+        # Save to temp file since Cloudinary SDK needs a real file path
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
+            temp_file.write(contents)
+            temp_path = temp_file.name
+
+        try:
+            # Upload to Cloudinary
+            result = await cloudinary_client.upload_artifact(
+                file_path=temp_path,
+                artifact_type="original_image",
+                job_id="assets",
+                metadata={"asset_id": asset_id}
+            )
+        finally:
+            # Clean up temp file
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
 
         # Create asset record
         asset_data = {

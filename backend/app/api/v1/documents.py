@@ -28,21 +28,43 @@ async def generate_report(
         if not job.data:
             raise HTTPException(status_code=404, detail="Job not found")
 
-        # TODO: Generate report (implement in MEGAPROMPT 10)
-
+        # Generate report
+        from app.services.document_generator import DocumentGenerator
+        from app.main import cloudinary_client
+        
+        generator = DocumentGenerator(supabase_client, cloudinary_client)
+        doc_metadata = await generator.generate_markdown_report(job_id, user_id)
+        
+        # Insert into documents table
+        new_doc = {
+            "job_id": job_id,
+            "doc_type": "analysis_report",
+            "format": "md",
+            "cloudinary_public_id": doc_metadata["cloudinary_public_id"],
+            "url": doc_metadata["url"]
+        }
+        
+        # Insert and return
+        result = supabase_client.get_user_client().table("documents").insert(new_doc).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to save document metadata")
+            
+        doc = result.data[0]
+        
         return {
-            "document_id": str(uuid.uuid4()),
-            "type": "analysis_report",
-            "format": format,
-            "url": f"/api/v1/documents/{uuid.uuid4()}",
-            "created_at": datetime.utcnow()
+            "document_id": doc.get("document_id"),
+            "type": doc.get("doc_type"),
+            "format": doc.get("format"),
+            "url": f"/api/v1/documents/{doc.get('document_id')}",
+            "created_at": doc.get("created_at")
         }
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error generating report: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to generate report")
+        raise HTTPException(status_code=500, detail=f"Failed to generate report: {str(e)}")
 
 
 @router.get("/jobs/{job_id}/documents")

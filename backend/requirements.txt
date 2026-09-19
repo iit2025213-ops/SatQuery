@@ -29,6 +29,7 @@ python-json-logger
 httpx
 requests
 Pillow>=10.3.0
+openai
 
 # Geospatial
 shapely

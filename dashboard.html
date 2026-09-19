@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SatQuery — Describe an app. We'll build it.</title>
+<meta name="description" content="SatQuery turns a written description into a working app.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&display=block" rel="stylesheet">
+<script>document.documentElement.classList.add('anim');</script>
+<style>
+/* ── RESET ─────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+button,input,textarea{font:inherit;color:inherit;background:none;border:0}
+img,svg{display:block}
+:focus-visible{outline:2px solid #F8B285;outline-offset:3px;border-radius:4px}
+
+/* ── TOKENS ─────────────────────────────────────────────── */
+:root{
+  /* unit */
+  --u: min(0.06410256vw, 0.12400794vh);
+  --vu: 0.09920635vh;
+  --inset-top:41; --inset-bottom:106;
+
+  /* nav */
+  --brand-x:225; --brand-y:45; --mark:34; --brand-gap:12; --brand-fs:18.49;
+  --links-y:50.5; --links-gap:50; --links-fs:21.69;
+  --cta-x:1195; --cta-y:42; --cta-w:140; --cta-h:43; --cta-r:12; --cta-fs:15.70; --cta-dy:2;
+
+  /* hero */
+  --hero-gap:51;
+  --h1-y:323; --h1-fs:36.25; --display-ls:0.0018em;
+  --nav-ls:-0.0115em; --brand-ls:-0.0154em; --cta-ls:-0.0127em; --body-ls:0.007em;
+  --label-ls:normal; --model-ls:normal; --proof-ls:0.0065em;
+  --w-regular:400; --w-display-wght:410; --w-medium:500; --w-semibold:600;
+  --w-display:var(--w-display-wght); --w-nav:400; --w-brand:500; --w-cta:520;
+  --w-body:var(--w-regular); --w-label:var(--w-medium);
+  --w-model:var(--w-regular); --w-proof:480;
+
+  /* composer */
+  --card-x:425; --card-y:413; --card-w:708; --card-h:143; --card-r:26;
+  --ph-x:452; --ph-y:446; --ph-fs:9.97;
+  --chips-x:444; --chips-y:505; --chip-h:30; --chip-r:9; --chip-fs:9.0; --chip-gap:5.5;
+  --son-fs:10.4; --son-top:15.5; --chev-gap:6.2;
+  --chev-x:1013.5; --chev-y:522.3;
+  --att-x:1043.2; --att-y:515.1;
+  --send-x:1084; --send-y:507; --send-d:35;
+
+  /* footer */
+  --by-y:799; --by-fs:14.01; --logo-y:867; --logo-gap:62;
+
+  /* easing */
+  --e-primary:cubic-bezier(.16,1,.3,1);
+  --e-soft:cubic-bezier(.22,1,.36,1);
+}
+@supports (height:100dvh){
+  :root{
+    --u:min(0.06410256vw, 0.12400794dvh);
+    --vu:0.09920635dvh;
+  }
+}
+@media (min-width:1561px){
+  :root{--inset-top:27;--inset-bottom:74}
+}
+
+/* ── TYPOGRAPHY BASE ────────────────────────────────────── */
+html,body{height:100%}
+body{
+  font-family:Inter,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-synthesis:none;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  text-rendering:geometricPrecision;
+  background:#02050a;
+  overflow:hidden;
+  color:#fff;
+}
+
+/* ── STAGE ──────────────────────────────────────────────── */
+.stage{
+  position:fixed;inset:0;overflow:hidden;background:#02050a;
+}
+.stage-image{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;object-position:center center;
+  z-index:0;
+}
+.stage-overlay{
+  position:absolute;inset:0;
+  background:rgba(0,0,0,.18);
+  z-index:1;
+  pointer-events:none;
+}
+
+/* ── FRAME ──────────────────────────────────────────────── */
+.frame{
+  position:absolute;inset:0;z-index:2;
+  display:flex;flex-direction:column;
+  padding:
+    calc(var(--inset-top)*var(--vu))
+    calc(225*var(--u))
+    calc(var(--inset-bottom)*var(--vu));
+}
+
+/* ── NAV ─────────────────────────────────────────────────── */
+header.nav{
+  position:relative;
+  height:calc(43*var(--u));
+  display:flex;align-items:center;justify-content:space-between;
+  flex:none;
+}
+
+.brand{
+  display:inline-flex;align-items:center;
+  gap:calc(var(--brand-gap)*var(--u));
+  text-decoration:none;color:#fff;
+  font-size:calc(var(--brand-fs)*var(--u));
+  font-weight:var(--w-brand);
+  letter-spacing:var(--brand-ls);
+  font-variation-settings:"opsz" 32;
+  text-shadow:0 calc(1*var(--u)) calc(10*var(--u)) rgba(0,0,0,.30);
+  flex:none;
+}
+.brand-word{transform:translateY(calc(1*var(--u)))}
+.brand-mark{
+  width:calc(var(--mark)*var(--u));
+  height:calc(var(--mark)*var(--u));
+  flex:none;overflow:visible;
+}
+
+/* ── SIDEBAR ─────────────────────────────────────────────── */
+.sidebar{
+  position:fixed;
+  left:28px;
+  top:50%;
+  transform:translateY(-50%);
+  width:260px;
+  min-height:540px;
+  border-radius:18px;
+  background:rgba(7,12,20,.84);
+  border:1px solid rgba(255,255,255,.12);
+  -webkit-backdrop-filter:blur(18px) saturate(120%);
+  backdrop-filter:blur(18px) saturate(120%);
+  box-shadow:0 20px 60px rgba(0,0,0,.35);
+  padding:28px 14px 36px;
+  z-index:10;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+  transition:
+    width 280ms cubic-bezier(.16,1,.3,1),
+    padding 280ms cubic-bezier(.16,1,.3,1);
+}
+
+/* header row: label + toggle button */
+.sidebar-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 4px 18px;
+  flex:none;
+}
+.sidebar-label{
+  font-size:11px;
+  font-weight:var(--w-medium);
+  letter-spacing:.12em;
+  color:rgba(255,255,255,.32);
+  text-transform:uppercase;
+  line-height:1;
+  white-space:nowrap;
+  overflow:hidden;
+  transition:opacity 220ms ease, width 280ms cubic-bezier(.16,1,.3,1);
+  opacity:1;
+}
+
+/* toggle button */
+.sidebar-toggle{
+  flex:none;
+  width:34px;height:34px;
+  border-radius:9px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.10);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  transition:background .18s ease, border-color .18s ease;
+  color:rgba(255,255,255,.55);
+  padding:0;
+  font-family:inherit;
+}
+.sidebar-toggle:hover{
+  background:rgba(255,255,255,.11);
+  border-color:rgba(255,255,255,.18);
+  color:#fff;
+}
+.sidebar-toggle .chev-icon{
+  width:14px;height:14px;
+  flex:none;
+  transition:transform 280ms cubic-bezier(.16,1,.3,1);
+}
+
+/* main nav group */
+.sidebar-main{
+  display:flex;flex-direction:column;
+  gap:2px;
+  flex:none;
+}
+
+/* divider + settings group */
+.sidebar-divider{
+  height:1px;
+  background:rgba(255,255,255,.08);
+  margin:20px 4px 16px;
+  flex:none;
+  transition:opacity 180ms ease;
+}
+.sidebar-settings{
+  margin-top:auto;
+  display:flex;flex-direction:column;
+  gap:2px;
+}
+
+/* nav items */
+.sidebar-item{
+  display:flex;align-items:center;
+  gap:12px;
+  padding:14px 12px;
+  border-radius:10px;
+  font-size:14px;
+  font-weight:var(--w-regular);
+  color:rgba(255,255,255,.68);
+  text-decoration:none;
+  border:1px solid transparent;
+  background:none;
+  cursor:pointer;
+  white-space:nowrap;
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease,
+    padding 280ms cubic-bezier(.16,1,.3,1);
+  width:100%;
+  text-align:left;
+  font-family:inherit;
+  line-height:1;
+}
+.sidebar-item:hover{
+  background:rgba(255,255,255,.06);
+  color:rgba(255,255,255,.92);
+}
+.sidebar-item.active{
+  background:rgba(255,255,255,.08);
+  border-color:rgba(255,255,255,.12);
+  color:#fff;
+}
+.sidebar-icon{
+  flex:none;
+  width:16px;height:16px;
+  opacity:.70;
+  transition:opacity 180ms ease;
+}
+.sidebar-item.active .sidebar-icon,
+.sidebar-item:hover .sidebar-icon{opacity:1}
+
+/* label text inside each item */
+.sidebar-item-label{
+  opacity:1;
+  transition:opacity 200ms ease;
+  overflow:hidden;
+}
+
+/* ── COLLAPSED STATE ─────────────────────────────────── */
+.sidebar.collapsed{
+  width:68px;
+  padding:28px 8px 36px;
+}
+.sidebar.collapsed .sidebar-label{
+  opacity:0;
+  width:0;
+  padding:0;
+}
+.sidebar.collapsed .sidebar-item-label{
+  opacity:0;
+  width:0;
+  overflow:hidden;
+  pointer-events:none;
+}
+.sidebar.collapsed .sidebar-item{
+  padding:14px;
+  justify-content:center;
+  gap:0;
+}
+.sidebar.collapsed .sidebar-divider{
+  margin:16px 4px 12px;
+}
+.sidebar.collapsed .sidebar-toggle .chev-icon{
+  transform:rotate(180deg);
+}
+
+@media (min-width:769px){
+  /* Pin the SatQuery brand above the sidebar, left-aligned with it */
+  .brand{
+    position:fixed;
+    left:28px;
+    top:calc(50% - (var(--sb-half, 270px)) - 52px);
+    z-index:11;
+  }
+}
+@media (max-width:768px){
+  .sidebar{display:none}
+  .brand{position:static}
+}
+
+
+
+/* ── BURGER ──────────────────────────────────────────────── */
+#menu{display:none}
+.burger{
+  display:none;
+  width:38px;height:38px;
+  min-width:38px;min-height:38px;
+  border-radius:11px;
+  background:rgba(255,255,255,.10);
+  border:1px solid rgba(255,255,255,.14);
+  cursor:pointer;align-items:center;justify-content:center;flex:none;
+}
+.burger-icon{display:flex;flex-direction:column;gap:4px;pointer-events:none}
+.burger-icon span{
+  display:block;width:17px;height:1.5px;
+  background:#fff;border-radius:2px;
+}
+
+/* ── MOBILE SHEET ────────────────────────────────────────── */
+.sheet{
+  display:none;
+  flex-direction:column;
+  overflow:hidden;
+  flex:none;
+}
+.sheet-inner{
+  background:rgba(24,24,27,.86);
+  -webkit-backdrop-filter:blur(20px);
+  backdrop-filter:blur(20px);
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.09);
+  padding:20px;
+  display:flex;flex-direction:column;gap:6px;
+  margin-top:8px;
+}
+.sheet a{
+  font-size:15px;color:#fff;text-decoration:none;padding:9px 4px;
+  opacity:.85;
+}
+.sheet a:hover{opacity:1}
+.sheet-cta{
+  display:flex;align-items:center;justify-content:center;
+  height:40px;border-radius:11px;margin-top:8px;
+  background:linear-gradient(180deg,#3d3d3f 0%,#1d1d20 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 2px 14px rgba(0,0,0,.28);
+  font-size:15px;font-weight:520;letter-spacing:var(--cta-ls);
+  text-decoration:none;color:#fff;
+  opacity:1 !important;
+}
+
+/* ── HERO ─────────────────────────────────────────────────── */
+main.hero{
+  flex:1;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:calc(var(--hero-gap)*var(--vu));
+  padding-bottom:calc(4*var(--vu));
+}
+
+.h1{
+  font-size:calc(var(--h1-fs)*var(--u));
+  font-weight:var(--w-display);
+  line-height:1.10;
+  letter-spacing:var(--display-ls);
+  color:#fff;
+  text-align:center;
+  font-variation-settings:"opsz" 32;
+  text-shadow:0 calc(2*var(--u)) calc(22*var(--u)) rgba(0,0,0,.30);
+  will-change:transform,opacity;
+}
+.h-sub{
+  font-size:calc(15.5*var(--u));
+  font-weight:var(--w-regular);
+  color:rgba(255,255,255,.65);
+  text-align:center;
+  line-height:1.5;
+  margin-top:calc(16*var(--u));
+  letter-spacing:0.01em;
+}
+
+/* ── COMPOSER CARD ──────────────────────────────────────── */
+form.card{
+  width:calc(var(--card-w)*var(--u));
+  height:calc(var(--card-h)*var(--u));
+  border-radius:calc(var(--card-r)*var(--u));
+  margin-right:calc(3*var(--u));
+  background:rgba(30,30,32,.45);
+  -webkit-backdrop-filter:blur(calc(26*var(--u))) saturate(112%);
+  backdrop-filter:blur(calc(26*var(--u))) saturate(112%);
+  box-shadow:inset 0 0 0 1px rgba(214,228,255,.14),0 calc(22*var(--u)) calc(60*var(--u)) rgba(0,0,0,.30);
+  position:relative;
+  will-change:transform,opacity;
+  flex:none;
+}
+
+/* placeholder */
+.ph{
+  position:absolute;
+  left:calc((452 - 425)*var(--u));
+  top:calc((446 - 413)*var(--u));
+  right:calc(24*var(--u));
+  color:#8B8C8E;
+  font-size:calc(15*var(--u));
+  font-weight:var(--w-body);
+  line-height:1.35;
+  letter-spacing:var(--body-ls);
+  white-space:nowrap;overflow:hidden;
+  pointer-events:none;
+}
+
+/* ── TOOLBAR (.tools) ────────────────────────────────────── */
+/* Desktop: absolutely positioned inside the card */
+.tools{
+  position:absolute;
+  left:calc((444 - 425)*var(--u));
+  top:calc((505 - 413)*var(--u));
+  right:calc((425 + 708 - 1134)*var(--u));
+  height:calc(30*var(--u));
+  display:flex;align-items:center;
+}
+
+/* ── CHIPS ───────────────────────────────────────────────── */
+.chips{
+  display:flex;align-items:center;
+  gap:calc(var(--chip-gap)*var(--u));
+  flex:none;
+}
+.chip{
+  display:inline-flex;align-items:center;
+  width:calc(var(--cw)*var(--u));
+  height:calc(var(--chip-h)*var(--u));
+  border-radius:calc(var(--chip-r)*var(--u));
+  padding-left:calc(var(--pl)*var(--u));
+  padding-right:calc(10*var(--u));
+  gap:calc(var(--ig)*var(--u));
+  font-size:calc(var(--chip-fs)*var(--u));
+  font-weight:var(--w-label);
+  letter-spacing:var(--label-ls);
+  color:#909093;line-height:1;
+  background:linear-gradient(180deg,rgba(255,255,255,.088) 0%,rgba(255,255,255,.050) 45%,rgba(255,255,255,.038) 100%);
+  border:1px solid rgba(255,255,255,.05);
+  cursor:pointer;
+  transition:background .18s ease,color .18s ease;
+  white-space:nowrap;flex:none;
+}
+.chip:hover{
+  background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.07));
+  color:#c8c8cb;
+}
+.chip-icon{flex:none;color:currentColor}
+.chip-label{transform:translateY(calc(2*var(--u)))}
+
+/* ── RIGHT CLUSTER — desktop (absolute) ─────────────────── */
+.right{
+  position:absolute;inset:0;pointer-events:none;
+}
+.right > *{position:absolute;pointer-events:auto}
+
+
+/* attach */
+.attach{
+  left:calc(599.15*var(--u));
+  top:calc(10.14*var(--u));
+  color:#A9AAAD;cursor:pointer;
+  background:none;border:none;padding:0;
+  transition:color .18s ease;
+  line-height:0;
+}
+.attach svg{
+  width:calc(19.79*var(--u));
+  height:auto;
+}
+.attach:hover{color:#fff}
+
+/* send */
+.send-btn{
+  left:calc(640*var(--u));
+  top:calc(2*var(--u));
+  width:calc(35*var(--u));height:calc(35*var(--u));
+  border-radius:50%;
+  background:linear-gradient(145deg,#183A63 0%,#0D2440 100%);
+  box-shadow:0 calc(4*var(--u)) calc(14*var(--u)) rgba(20,65,110,.35);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  transition:filter .18s ease,transform .12s ease;
+  border:none;padding:0;
+  flex:none;
+}
+.send-btn:hover{filter:brightness(1.07)}
+.send-btn:active{transform:scale(.95)}
+.send-btn .arrow{width:calc(11.66*var(--u));height:auto}
+
+
+
+/* ── ANIMATIONS ─────────────────────────────────────────── */
+@media (prefers-reduced-motion:no-preference){
+  @keyframes e-settle-down{
+    from{opacity:0;transform:translateY(calc(-5*var(--u)))}
+    to  {opacity:1;transform:none}
+  }
+  @keyframes e-settle-up{
+    from{opacity:0;transform:translateY(calc(6*var(--u)))}
+    to  {opacity:1;transform:none}
+  }
+  @keyframes e-mark{
+    from{transform:scale(.9)}
+    to  {transform:none}
+  }
+  @keyframes e-focus{
+    from{opacity:0;transform:translateY(calc(14*var(--u)));filter:blur(calc(6*var(--u)))}
+    to  {opacity:1;transform:none;filter:blur(0)}
+  }
+  @keyframes e-panel{
+    from{opacity:0;transform:translateY(calc(18*var(--u))) scale(.985)}
+    to  {opacity:1;transform:none}
+  }
+  @keyframes e-populate{
+    from{opacity:0;transform:translateY(calc(4*var(--u)))}
+    to  {opacity:1;transform:none}
+  }
+  @keyframes e-send{
+    from{transform:scale(.82)}
+    to  {transform:none}
+  }
+
+  html.anim .brand              {animation:e-settle-down .58s var(--e-soft)    .06s both}
+  html.anim .brand-mark         {animation:e-mark        .62s var(--e-primary) .06s both}
+  html.anim .sidebar            {animation:e-panel       .90s var(--e-primary) .50s both}
+  html.anim .h1                 {animation:e-focus      1.00s var(--e-primary) .30s both}
+  html.anim form.card           {animation:e-panel       .90s var(--e-primary) .62s both}
+  html.anim .ph                 {animation:e-populate    .50s var(--e-soft)    .88s both}
+  html.anim .chips              {animation:e-populate    .50s var(--e-soft)    .94s both}
+  html.anim .right              {animation:e-populate    .50s var(--e-soft)   1.00s both}
+  html.anim .send-btn           {animation:e-send        .50s var(--e-primary) 1.00s both}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+
+/* ─────────────────────────────────────────────────────────
+   TABLET  600–1180 wide AND height ≥ 600
+   ───────────────────────────────────────────────────────── */
+@media (min-width:600px) and (max-width:1180px) and (min-height:600px){
+  :root{--u:1px}
+
+  .frame{
+    padding:
+      clamp(24px,3.4vh,44px)
+      clamp(28px,4.2vw,60px)
+      clamp(26px,4.4vh,56px);
+  }
+
+  .h1{
+    font-size:clamp(27px,4.3vw,44px);
+    line-height:1.12;
+  }
+
+  form.card{
+    width:min(100%, clamp(516px,74vw,760px));
+    height:auto;
+    margin-right:0;
+    padding:clamp(15px,1.9vw,24px);
+    border-radius:clamp(17px,2.1vw,26px);
+    display:flex;flex-direction:column;
+    gap:clamp(20px,3.2vh,44px);
+  }
+
+  .ph{
+    position:static;
+    white-space:normal;
+    font-size:clamp(11px,1.35vw,14px);
+    line-height:1.4;
+    right:auto;
+  }
+
+  .tools{
+    position:static;
+    height:auto;
+    display:flex;flex-direction:row;
+    flex-wrap:wrap;
+    gap:clamp(10px,1.4vw,18px);
+    align-items:center;
+  }
+
+  .chips{
+    flex-wrap:nowrap;
+    gap:clamp(6px,0.85vw,10px);
+  }
+
+  .chip{
+    width:auto;
+    height:clamp(29px,3.4vh,34px);
+    padding:0 clamp(7px,1vw,13px);
+    font-size:clamp(9.6px,1.12vw,12.5px);
+  }
+
+  /* RIGHT CLUSTER — flex on tablet */
+  .right{
+    position:static;
+    display:flex;align-items:center;
+    margin-left:auto;
+    gap:0;
+    pointer-events:auto;
+    inset:unset;
+  }
+  .right > *{position:static;pointer-events:auto}
+
+  .model{
+    top:auto;left:auto;
+    font-size:clamp(9.8px,1.12vw,12.5px);
+  }
+
+  .attach{
+    left:auto;top:auto;
+    margin-left:clamp(9px,1.4vw,20px);
+  }
+  .attach svg{width:18px}
+
+  .send-btn{
+    left:auto;top:auto;
+    margin-left:clamp(9px,1.3vw,18px);
+    width:clamp(32px,3.5vw,38px);
+    height:clamp(32px,3.5vw,38px);
+  }
+  .send-btn .arrow{width:11px}
+
+  /* keep desktop nav */
+  .burger{display:none}
+  .sheet {display:none !important}
+}
+
+/* ─────────────────────────────────────────────────────────
+   COMPACT  ≤ 599px  OR  (≤ 1180px AND h < 600)
+   ───────────────────────────────────────────────────────── */
+@media (max-width:599px),(max-width:1180px) and (max-height:599px){
+  :root{--u:1px}
+
+  .frame{
+    padding:
+      max(18px, env(safe-area-inset-top))
+      max(clamp(18px,5.2vw,40px), env(safe-area-inset-right))
+      max(20px, env(safe-area-inset-bottom))
+      max(clamp(18px,5.2vw,40px), env(safe-area-inset-left));
+  }
+
+  .links         {display:none}
+  .burger        {display:flex}
+  .sheet         {display:flex}
+  .brand-mark    {width:30px;height:30px}
+
+  main.hero      {align-items:flex-start}
+
+  .h1{
+    width:100%;max-width:15ch;
+    font-size:clamp(29px,7.6vw,50px);
+    line-height:1.14;
+    letter-spacing:-.012em;
+  }
+
+  form.card{
+    width:100%;max-width:600px;
+    height:auto;margin-right:0;
+    display:flex;flex-direction:column;
+    gap:clamp(16px,4.6vh,34px);
+    padding:clamp(13px,3.4vw,18px);
+  }
+
+  .ph{
+    position:static;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    font-size:clamp(9.4px,2.95vw,14px);
+    right:auto;
+  }
+
+  .tools{
+    position:static;height:auto;
+    display:flex;flex-direction:column;
+    align-items:stretch;gap:12px;
+  }
+
+  .chips{flex-wrap:wrap}
+  .chip{width:auto;height:30px;font-size:9px;padding:0 10px}
+
+  /* RIGHT CLUSTER — phone flex */
+  .right{
+    position:static;
+    display:flex;align-items:center;
+    justify-content:flex-start;
+    pointer-events:auto;
+    inset:unset;
+  }
+  .right > *{position:static;pointer-events:auto}
+
+  .model{top:auto;left:auto;font-size:10px}
+
+  .attach{
+    left:auto;top:auto;
+    margin-left:auto;  /* push attach+send to the right */
+  }
+  .attach svg{width:18px}
+
+  .send-btn{
+    left:auto;top:auto;
+    margin-left:14px;
+    width:40px;height:40px;
+  }
+  .send-btn .arrow{width:12px}
+}
+
+/* extra-short */
+@media (max-width:1180px) and (max-height:560px){
+  main.hero{gap:16px}
+  .h1{font-size:clamp(24px,5.4vh,34px)}
+  .frame{padding-top:10px}
+}
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- ── FLOATING SIDEBAR ─────────────────────────── -->
+  <aside class="sidebar" id="sidebar" aria-label="SatQuery navigation">
+
+    <!-- header: label + collapse button -->
+    <div class="sidebar-header">
+      <span class="sidebar-label">Navigation</span>
+      <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Collapse navigation">
+        <!-- left-pointing chevron; rotates 180° when collapsed -->
+        <svg class="chev-icon" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M8.5 2.5L4 7l4.5 4.5" stroke="currentColor" stroke-width="1.6"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- main navigation items -->
+    <div class="sidebar-main">
+
+      <!-- Query Builder -->
+      <a href="#" class="sidebar-item active" aria-current="page">
+        <svg class="sidebar-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="6.5" cy="6.5" r="4" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M10 10l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M4.5 6.5h4M6.5 4.5v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        <span class="sidebar-item-label">Query Builder</span>
+      </a>
+
+      <!-- AOI -->
+      <a href="#" class="sidebar-item">
+        <svg class="sidebar-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M8 2L2 5.5v5L8 14l6-3.5v-5L8 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M2 5.5l6 3.5 6-3.5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <line x1="8" y1="9" x2="8" y2="14" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        <span class="sidebar-item-label">AOI</span>
+      </a>
+
+      <!-- Documents -->
+      <a href="#" class="sidebar-item">
+        <svg class="sidebar-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M10 2v3h3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <line x1="5.5" y1="7.5" x2="10.5" y2="7.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          <line x1="5.5" y1="10" x2="10.5" y2="10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        <span class="sidebar-item-label">Documents</span>
+      </a>
+
+      <!-- Recent Cases -->
+      <a href="#" class="sidebar-item">
+        <svg class="sidebar-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M8 5v3.5l2.5 1.5" stroke="currentColor" stroke-width="1.4"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="sidebar-item-label">Recent Cases</span>
+      </a>
+
+    </div><!-- /.sidebar-main -->
+
+    <!-- divider -->
+    <div class="sidebar-divider" aria-hidden="true"></div>
+
+    <!-- settings group (pushed to bottom via margin-top:auto) -->
+    <div class="sidebar-settings">
+      <a href="#" class="sidebar-item">
+        <svg class="sidebar-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="8" cy="8" r="2.2" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M8 1.5v1.2M8 13.3v1.2M1.5 8h1.2M13.3 8h1.2
+                   M3.4 3.4l.85.85M11.75 11.75l.85.85
+                   M3.4 12.6l.85-.85M11.75 4.25l.85-.85"
+                stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <span class="sidebar-item-label">Settings</span>
+      </a>
+    </div><!-- /.sidebar-settings -->
+
+  </aside>
+  <img class="stage-image"
+    src="ChatGPT Image Sep 18, 2026, 10_02_53 PM.png"
+    alt=""
+    aria-hidden="true">
+  <div class="stage-overlay"></div>
+
+  <div class="frame">
+    <!-- Mobile menu toggle (hidden checkbox) -->
+    <input type="checkbox" id="menu" hidden>
+
+    <!-- ── NAV ────────────────────────────────────── -->
+    <header class="nav">
+
+      <!-- Brand -->
+      <a href="#" class="brand" aria-label="SatQuery home">
+        <svg class="brand-mark" viewBox="0 0 34 34" fill="none" aria-hidden="true">
+          <circle cx="17" cy="17" r="17" fill="#9C86CE"/>
+          <circle cx="17" cy="17" r="8.6" fill="#FFFFFF"/>
+          <circle cx="17" cy="17" r="3.7" fill="#151519"/>
+        </svg>
+        <span class="brand-word">SatQuery</span>
+      </a>
+
+
+
+
+
+      <!-- Burger (mobile) -->
+      <label for="menu" class="burger" aria-label="Open navigation menu" role="button" tabindex="0">
+        <span class="burger-icon" aria-hidden="true">
+          <span></span>
+          <span></span>
+        </span>
+      </label>
+    </header>
+
+    <!-- Mobile Sheet -->
+    <div class="sheet" id="mobile-sheet" role="dialog" aria-modal="true" aria-label="Navigation menu">
+      <div class="sheet-inner">
+      </div>
+    </div>
+
+    <!-- ── HERO ───────────────────────────────────── -->
+    <main class="hero">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:calc(16*var(--u));">
+        <h1 class="h1">Query the Earth</h1>
+        <p class="h-sub" style="margin-top:0;">From raw satellite data to real-world answers.<br>Natural language. Real evidence.</p>
+      </div>
+
+      <!-- Composer card -->
+      <form class="card" onsubmit="return false" aria-label="Query the Earth">
+
+        <!-- Placeholder -->
+        <p class="ph" aria-hidden="true">Ask anything about Earth...</p>
+
+        <!-- Toolbar -->
+        <div class="tools">
+
+          <!-- Chips -->
+          <div class="chips">
+            <!-- Chip 1: Sources -->
+            <button type="button" class="chip" style="width:auto;padding-left:calc(12*var(--u));padding-right:calc(12*var(--u));gap:calc(6*var(--u));" aria-label="Sources">
+              <svg class="chip-icon" aria-hidden="true" viewBox="0 0 16 16" fill="none" style="width:calc(14*var(--u));height:auto;flex:none">
+                <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2"/>
+                <ellipse cx="8" cy="8" rx="2.5" ry="6.5" stroke="currentColor" stroke-width="1.2"/>
+                <line x1="1.5" y1="8" x2="14.5" y2="8" stroke="currentColor" stroke-width="1.2"/>
+              </svg>
+              <span class="chip-label">Sources</span>
+              <svg class="chev" viewBox="0 0 10 6" fill="none" aria-hidden="true" style="width:calc(8*var(--u));height:auto;margin-left:calc(4*var(--u));opacity:0.5">
+                <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+
+            <!-- Chip 2: Advanced -->
+            <button type="button" class="chip" style="width:auto;padding-left:calc(12*var(--u));padding-right:calc(12*var(--u));gap:calc(6*var(--u));" aria-label="Advanced">
+              <svg class="chip-icon" aria-hidden="true" viewBox="0 0 16 16" fill="none" style="width:calc(14*var(--u));height:auto;flex:none">
+                <line x1="3" y1="5" x2="13" y2="5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                <line x1="3" y1="11" x2="13" y2="11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                <circle cx="6" cy="5" r="2" fill="currentColor"/>
+                <circle cx="10" cy="11" r="2" fill="currentColor"/>
+              </svg>
+              <span class="chip-label">Advanced</span>
+            </button>
+          </div><!-- /.chips -->
+
+          <!-- RIGHT CLUSTER (desktop: absolute within .tools) -->
+          <div class="right">
+
+
+            <!-- Attach paperclip — raw SVG, no padding -->
+            <button type="button" class="attach" aria-label="Attach file">
+              <svg viewBox="0 0 20 24" fill="none" aria-hidden="true">
+                <path d="M17.657 10.757L9.9 18.515a5 5 0 0 1-7.071-7.072l9.193-9.192a3 3 0 0 1 4.243 4.243L7.607 14.75a1 1 0 0 1-1.415-1.414l8.486-8.486"
+                  stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+
+            <!-- Send circle -->
+            <button type="submit" class="send-btn" aria-label="Build it">
+              <svg class="arrow" viewBox="0 0 12 14" fill="none" aria-hidden="true">
+                <path d="M6 13V1M6 1L1.5 5.5M6 1l4.5 4.5" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+
+          </div><!-- /.right -->
+        </div><!-- /.tools -->
+      </form><!-- /.card -->
+    </main>
+
+  </div><!-- /.frame -->
+</div><!-- /.stage -->
+
+<script>
+(function () {
+  'use strict';
+
+  /* ── Mobile menu ──────────────────────────────── */
+  var cb = document.getElementById('menu');
+  var sheet = document.getElementById('mobile-sheet');
+  if (cb && sheet) {
+    function sync() {
+      sheet.style.display = cb.checked ? 'flex' : 'none';
+    }
+    cb.addEventListener('change', sync);
+    // keyboard support on the burger label
+    document.querySelectorAll('.burger').forEach(function (el) {
+      el.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          cb.checked = !cb.checked;
+          sync();
+        }
+      });
+    });
+    sync();
+  }
+
+  /* ── Sidebar toggle ─────────────────────── */
+  var sidebar     = document.getElementById('sidebar');
+  var sidebarBtn  = document.getElementById('sidebar-toggle');
+  if (sidebar && sidebarBtn) {
+    sidebarBtn.addEventListener('click', function () {
+      var isCollapsed = sidebar.classList.toggle('collapsed');
+      sidebarBtn.setAttribute(
+        'aria-label',
+        isCollapsed ? 'Expand navigation' : 'Collapse navigation'
+      );
+    });
+  }
+
+  /* ── Animation teardown ───────────────── */
+  setTimeout(function () {
+    document.documentElement.classList.remove('anim');
+  }, 2600);
+})();
+</script>
+</body>
+</html>

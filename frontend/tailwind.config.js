@@ -1,0 +1,66 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  darkMode: "class",
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        "tertiary-fixed": "#c9e6ff",
+        "inverse-surface": "#213145",
+        "on-tertiary-container": "#008cc7",
+        "background": "#f8f9ff",
+        "error-container": "#ffdad6",
+        "surface": "#f8f9ff",
+        "on-background": "#0b1c30",
+        "secondary-container": "#316bf3",
+        "surface-dim": "#cbdbf5",
+        "primary-fixed-dim": "#c4c6d0",
+        "on-tertiary": "#ffffff",
+        "surface-container": "#e5eeff",
+        "tertiary-fixed-dim": "#89ceff",
+        "on-surface-variant": "#46464b",
+        "on-primary": "#ffffff",
+        "on-secondary-fixed-variant": "#003ea8",
+        "inverse-on-surface": "#eaf1ff",
+        "on-tertiary-fixed-variant": "#004c6e",
+        "on-primary-container": "#81838d",
+        "surface-container-high": "#dce9ff",
+        "on-secondary": "#ffffff",
+        "surface-container-lowest": "#ffffff",
+        "on-secondary-container": "#fefcff",
+        "secondary-fixed": "#dbe1ff",
+        "secondary": "#0051d5",
+        "primary-container": "#191b23",
+        "primary-fixed": "#e1e2ec",
+        "surface-container-highest": "#d3e4fe",
+        "on-error": "#ffffff",
+        "secondary-fixed-dim": "#b4c5ff",
+        "on-surface": "#0b1c30",
+        "surface-variant": "#d3e4fe",
+        "on-tertiary-fixed": "#001e2f",
+        "on-primary-fixed-variant": "#44474f",
+        "on-primary-fixed": "#191b23",
+        "error": "#ba1a1a",
+        "surface-container-low": "#eff4ff",
+        "outline-variant": "#c6c6cb",
+        "outline": "#76777c",
+        "tertiary-container": "#001e2f",
+        "primary": "#000000",
+        "tertiary": "#000000",
+        "inverse-primary": "#c4c6d0",
+        "surface-tint": "#5c5e67",
+        "on-error-container": "#93000a",
+        "surface-bright": "#f8f9ff",
+        "on-secondary-fixed": "#00174b"
+      },
+      fontFamily: {
+        "sans": ["Inter", "sans-serif"],
+        "mono": ["JetBrains Mono", "monospace"]
+      }
+    }
+  },
+  plugins: [],
+}
