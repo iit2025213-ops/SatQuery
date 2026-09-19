@@ -5,6 +5,9 @@ import AuthPage from './pages/AuthPage';
 import DashboardPage from './pages/DashboardPage';
 import DocumentsPage from './pages/DocumentsPage';
 import MyUploadsPage from './pages/MyUploadsPage';
+import HowItWorksPage from './pages/HowItWorksPage';
+import ArchitecturePage from './pages/ArchitecturePage';
+import CapabilitiesPage from './pages/CapabilitiesPage';
 
 // Protected route — checks for the real access token
 const ProtectedRoute = ({ children }) => {
@@ -24,6 +27,9 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<AuthPage />} />
+        <Route path="/how-it-works" element={<HowItWorksPage />} />
+        <Route path="/architecture" element={<ArchitecturePage />} />
+        <Route path="/capabilities" element={<CapabilitiesPage />} />
         <Route
           path="/dashboard"
           element={<ProtectedRoute><DashboardPage /></ProtectedRoute>}

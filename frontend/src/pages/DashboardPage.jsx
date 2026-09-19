@@ -14,16 +14,34 @@ export default function DashboardPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef(null);
+  
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef(null);
 
   const [recentJobs, setRecentJobs] = useState([]);
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('satquery_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+  const [userLoaded, setUserLoaded] = useState(!!user);
 
-  useEffect(() => {
-    document.documentElement.classList.add('anim', 'play');
-    const t = setTimeout(() => document.documentElement.classList.remove('anim', 'play'), 2600);
-    return () => clearTimeout(t);
+
+
+  useEffect(() => { 
+    fetchJobs(); 
+    fetchUser();
   }, []);
 
-  useEffect(() => { fetchJobs(); }, []);
+  async function fetchUser() {
+    try {
+      const data = await apiGet('/auth/me');
+      setUser(data);
+      sessionStorage.setItem('satquery_user', JSON.stringify(data));
+      setUserLoaded(true);
+    } catch (_) {}
+  }
 
   async function fetchJobs() {
     try {
@@ -81,6 +99,45 @@ export default function DashboardPage() {
     }
   }
 
+  function toggleListening() {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Your browser does not support Speech Recognition.');
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+    recognition.interimResults = true;
+    recognition.continuous = true; // Stay active even during pauses
+    
+    // Store the text we had before starting
+    const initialText = queryText;
+
+    recognition.onstart = () => setIsListening(true);
+    
+    recognition.onresult = (event) => {
+      let transcript = '';
+      for (let i = 0; i < event.results.length; ++i) {
+        transcript += event.results[i][0].transcript;
+      }
+      setQueryText(initialText + (initialText && transcript ? ' ' : '') + transcript);
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error', event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => setIsListening(false);
+    recognition.start();
+  }
+
   function relativeTime(iso) {
     if (!iso) return '';
     const mins = Math.floor((Date.now() - new Date(iso)) / 60000);
@@ -98,140 +155,129 @@ export default function DashboardPage() {
   return (
     <DashboardLayout>
       <div className="frame">
-        {/* NAV */}
-        <header className="nav">
-          <a href="#" className="brand" aria-label="SatQuery home">
-            <svg className="brand-mark" viewBox="0 0 34 34" fill="none">
-              <circle cx="17" cy="17" r="17" fill="#9C86CE"/>
-              <circle cx="17" cy="17" r="8.6" fill="#FFFFFF"/>
-              <circle cx="17" cy="17" r="3.7" fill="#151519"/>
-            </svg>
-            <span className="brand-word">SatQuery</span>
-          </a>
-        </header>
 
         {/* MAIN — centered composer */}
-        <main className="hero" style={{ justifyContent: 'center' }}>
+        <main className="hero" style={{ justifyContent: 'center', marginLeft: '260px' }}>
 
-          {/* Recent Cases — shown above the composer if any exist */}
-          {recentJobs.length > 0 && (
-            <div style={{ width: 'calc(708*var(--u))', maxWidth: '100%', marginBottom: 'calc(8*var(--u))' }}>
-              <p style={{ fontSize: 'calc(10.5*var(--u))', fontWeight: 500, letterSpacing: '.10em', color: 'rgba(255,255,255,.35)', textTransform: 'uppercase', marginBottom: 'calc(6*var(--u))' }}>
-                Recent Cases
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'calc(4*var(--u))' }}>
-                {recentJobs.map(job => (
-                  <div key={job.job_id} style={{
-                    display: 'flex', alignItems: 'center', gap: 'calc(8*var(--u))',
-                    background: 'rgba(255,255,255,.04)',
-                    border: '1px solid rgba(255,255,255,.07)',
-                    borderRadius: 'calc(8*var(--u))',
-                    padding: 'calc(7*var(--u)) calc(12*var(--u))',
-                  }}>
-                    <span style={{ width: 'calc(7*var(--u))', height: 'calc(7*var(--u))', borderRadius: '50%', background: statusDot(job.status), flexShrink: 0 }}/>
-                    <span style={{ fontSize: 'calc(12*var(--u))', color: 'rgba(255,255,255,.72)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {job.query}
-                    </span>
-                    <span style={{ fontSize: 'calc(10*var(--u))', color: 'rgba(255,255,255,.30)', flexShrink: 0 }}>
-                      {relativeTime(job.created_at)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+
 
           {/* Hero text */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'calc(10*var(--u))', marginBottom: 'calc(20*var(--u))' }}>
-            <h1 className="h1">Query the Earth</h1>
-            <p className="h-sub" style={{ marginTop: 0 }}>
-              From raw satellite data to real-world answers.<br/>Natural language. Real evidence.
-            </p>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '0px' }}>
+            <h1 style={{ 
+              fontSize: '3.0rem', 
+              fontWeight: 400, 
+              fontFamily: '"Outfit", "Inter", -apple-system, sans-serif',
+              background: 'linear-gradient(180deg, #FFFFFF 0%, #A1A1AA 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              letterSpacing: '-0.03em', 
+              margin: 0,
+              whiteSpace: 'nowrap',
+              opacity: userLoaded ? 1 : 0,
+              transition: 'opacity 0.3s ease'
+            }}>
+              {user?.display_name ? `What would you like to explore, ${user.display_name.split(' ')[0]}?` : 'What would you like to explore?'}
+            </h1>
           </div>
 
           {/* COMPOSER CARD */}
-          <form className="card" onSubmit={handleSubmit} style={{ position: 'relative' }}>
-
-            {queryText === '' && (
-              <p className="ph" aria-hidden="true">Ask anything about Earth...</p>
-            )}
-
-            <textarea
-              value={queryText}
-              onChange={e => setQueryText(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e); } }}
-              disabled={submitting}
-              rows={1}
-              style={{
-                position: 'absolute',
-                left: 'calc(27*var(--u))', top: 'calc(18*var(--u))',
-                right: 'calc(24*var(--u))', bottom: 'calc(52*var(--u))',
-                background: 'transparent', border: 'none', outline: 'none',
-                resize: 'none', color: '#fff',
-                fontSize: 'calc(15*var(--u))', fontFamily: 'inherit',
-                lineHeight: '1.35', letterSpacing: '0.007em', overflowY: 'auto',
-              }}
-              aria-label="Query input"
-            />
-
-            {/* Attached file chips */}
+          <form className="card" onSubmit={handleSubmit} style={{ 
+            position: 'relative', width: '850px', maxWidth: '90vw', 
+            borderRadius: '32px', height: 'auto', minHeight: attachedAssets.length > 0 ? '140px' : '72px', 
+            background: '#1E1F20', display: 'flex', flexDirection: 'column', 
+            justifyContent: 'flex-end', padding: '16px', border: 'none', 
+            boxShadow: '0 4px 24px rgba(0,0,0,0.5)' 
+          }}>
+            
+            {/* Top area for attachments (if any) */}
             {attachedAssets.length > 0 && (
-              <div style={{
-                position: 'absolute',
-                left: 'calc(19*var(--u))', bottom: 'calc(44*var(--u))',
-                display: 'flex', gap: 'calc(5*var(--u))', flexWrap: 'wrap',
-              }}>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px', paddingLeft: '8px' }}>
                 {attachedAssets.map(a => (
-                  <span key={a.asset_id} style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '3px',
-                    background: 'rgba(255,255,255,.10)', border: '1px solid rgba(255,255,255,.15)',
-                    borderRadius: '5px', padding: '1px 5px',
-                    fontSize: 'calc(9*var(--u))', color: 'rgba(255,255,255,.72)',
-                    maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  <div key={a.asset_id} style={{
+                    width: '80px', height: '80px', background: '#282A2C', borderRadius: '16px',
+                    display: 'flex', flexDirection: 'column', padding: '10px', position: 'relative'
                   }}>
-                    📎 {a.name}
-                    <button type="button" onClick={() => removeAsset(a.asset_id)}
-                      style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.45)', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
-                  </span>
+                    <span style={{ fontSize: '10px', fontWeight: 600, color: '#a1a1aa' }}>FILE</span>
+                    <span style={{ fontSize: '12px', color: '#fff', marginTop: 'auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
+                    <button type="button" onClick={() => removeAsset(a.asset_id)} style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '12px', lineHeight: 1 }}>×</button>
+                  </div>
                 ))}
               </div>
             )}
+
+            {/* Bottom area: input row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
+              <button type="button" aria-label="Attach file"
+                onClick={handleAttachClick} disabled={uploading}
+                style={{ 
+                  width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'transparent', border: 'none', color: '#a1a1aa',
+                  cursor: 'pointer', opacity: uploading ? 0.5 : 1
+                }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '28px', height: '28px' }}>
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+              </button>
+
+              <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', height: '40px' }}>
+                {queryText === '' && (
+                  <p className="ph" aria-hidden="true" style={{ position: 'absolute', left: '4px', top: '50%', transform: 'translateY(-50%)', fontSize: '1.15rem', fontWeight: 400, color: '#a1a1aa', letterSpacing: '0.01em', margin: 0, pointerEvents: 'none' }}>Ask anything about Earth...</p>
+                )}
+                <textarea
+                  value={queryText}
+                  onChange={e => setQueryText(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e); } }}
+                  disabled={submitting}
+                  rows={1}
+                  style={{
+                    width: '100%',
+                    background: 'transparent', border: 'none', outline: 'none', boxShadow: 'none',
+                    resize: 'none', color: '#fff',
+                    fontSize: '1.15rem', fontWeight: 400, fontFamily: 'inherit',
+                    lineHeight: '24px', letterSpacing: '0.01em', overflowY: 'hidden',
+                    whiteSpace: 'nowrap', padding: '8px 4px', height: '40px'
+                  }}
+                  aria-label="Query input"
+                />
+              </div>
+
+              <input ref={fileInputRef} type="file" multiple style={{ display: 'none' }} onChange={handleFileChange} accept="image/*,.pdf,.txt,.csv,.json,.geojson,.tif,.tiff" />
+              
+              <button type="button" aria-label="Toggle microphone" onClick={toggleListening} style={{ background: isListening ? 'rgba(75, 150, 255, 0.2)' : 'transparent', border: 'none', color: isListening ? '#4B96FF' : '#a1a1aa', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px', borderRadius: '50%' }}>
+                {isListening ? (
+                  <div className="mic-wave-container">
+                    <div className="mic-wave-bar" style={{ animationDelay: '0.0s' }} />
+                    <div className="mic-wave-bar" style={{ animationDelay: '0.1s' }} />
+                    <div className="mic-wave-bar" style={{ animationDelay: '0.2s' }} />
+                    <div className="mic-wave-bar" style={{ animationDelay: '0.3s' }} />
+                  </div>
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '22px', height: '22px' }}>
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                  </svg>
+                )}
+              </button>
+              <button type="submit" className="send-btn" aria-label="Submit query"
+                disabled={submitting || !queryText.trim()}
+                style={{ position: 'static', width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0, background: queryText.trim() ? '#4B96FF' : 'transparent', opacity: (submitting || !queryText.trim()) ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}>
+                <svg className="arrow" viewBox="0 0 12 14" fill="none" style={{ width: '18px', height: '18px', marginLeft: queryText.trim() ? '2px' : 0 }}>
+                  <path d="M6 13V1M6 1L1.5 5.5M6 1l4.5 4.5" stroke={queryText.trim() ? '#fff' : '#fff'} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
 
             {/* Error messages */}
             {(submitError || uploadError) && (
               <div style={{
-                position: 'absolute', top: 'calc(-26*var(--u))', left: 0, right: 0,
-                textAlign: 'center', fontSize: 'calc(11*var(--u))', color: '#f87171',
+                position: 'absolute', top: '-30px', left: 0, right: 0,
+                textAlign: 'center', fontSize: '13px', color: '#f87171',
               }}>{submitError || uploadError}</div>
             )}
-
-            <div className="tools">
-              <div className="chips">
-                <button type="button" className="chip"><span className="chip-label">Sources</span></button>
-                <button type="button" className="chip"><span className="chip-label">Advanced</span></button>
-              </div>
-              <div className="right">
-                <input ref={fileInputRef} type="file" multiple style={{ display: 'none' }}
-                  onChange={handleFileChange}
-                  accept="image/*,.pdf,.txt,.csv,.json,.geojson,.tif,.tiff" />
-
-                <button type="button" className="attach" aria-label="Attach file"
-                  onClick={handleAttachClick} disabled={uploading}
-                  style={{ opacity: uploading ? 0.5 : 1 }}>
-                  <svg viewBox="0 0 20 24" fill="none">
-                    <path d="M17.657 10.757L9.9 18.515a5 5 0 0 1-7.071-7.072l9.193-9.192a3 3 0 0 1 4.243 4.243L7.607 14.75a1 1 0 0 1-1.415-1.414l8.486-8.486" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-
-                <button type="submit" className="send-btn" aria-label="Submit query"
-                  disabled={submitting || !queryText.trim()}
-                  style={{ opacity: (submitting || !queryText.trim()) ? 0.5 : 1 }}>
-                  <svg className="arrow" viewBox="0 0 12 14" fill="none">
-                    <path d="M6 13V1M6 1L1.5 5.5M6 1l4.5 4.5" stroke="#fff" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
           </form>
         </main>
       </div>

@@ -1,0 +1,12 @@
+const FOV = 38, R = 1;
+const tanHalf = Math.tan(FOV / 2 * Math.PI / 180);
+const f = { s: 0.0, c: 0.0000, psi: -1.5708, r: 0.65, rx: 0.10, ry: -1.20 };
+f.t = Math.atan(f.r * tanHalf);
+f.a = Math.atan(f.c * tanHalf);
+var d = R / Math.sin(f.t);
+var ta = Math.tan(f.a);
+var vx = Math.cos(f.psi) * ta, vy = Math.sin(f.psi) * ta;
+var len = Math.sqrt(vx * vx + vy * vy + 1);
+console.log("x:", vx / len * d);
+console.log("y:", vy / len * d);
+console.log("z:", -1 / len * d);

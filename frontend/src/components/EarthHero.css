@@ -1,0 +1,688 @@
+:root {
+  --dw: 1353;
+  --dh: 1163;
+  --gutter: 25;
+  --u: max(min(.72px, calc(100vh / 700)), min(calc(100vw / 1353), calc(100vh / 1163)));
+  --dh-px: calc(1163 * var(--u));
+  --vshift: calc(max(0px, (100vh - var(--dh-px))) * .42);
+  --ink: #ffffff;
+  --cyan: #79dce8;
+  --cyan-logo: #5fd0e1;
+  --rule: rgba(255, 255, 255, .23);
+  --btn-ink: #071227;
+}
+@supports (height: 100dvh) {
+  :root {
+    --u: max(min(.72px, calc(100dvh / 700)), min(calc(100vw / 1353), calc(100dvh / 1163)));
+    --vshift: calc(max(0px, (100dvh - var(--dh-px))) * .42);
+  }
+}
+
+.earth-hero-container {
+  background: #04101f;
+  color: var(--ink);
+  font-family: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: geometricPrecision;
+  overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
+}
+
+.earth-hero-container .stage {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.earth-hero-container .sky {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: url('https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260827_202133_508c64b8-a31e-4290-bdfc-1187df70e0a6.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.earth-hero-container .sky video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0;
+  transition: opacity .22s linear;
+}
+
+.earth-hero-container .sky video.is-active {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .earth-hero-container .sky video {
+    display: none;
+  }
+}
+
+.earth-hero-container .ui {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+
+.earth-hero-container .copy {
+  position: absolute;
+  inset: 0;
+  transform: translateY(var(--vshift));
+  pointer-events: none;
+}
+
+.earth-hero-container .copy a, .earth-hero-container .copy button {
+  pointer-events: auto;
+}
+
+.earth-hero-container .col {
+  position: absolute;
+  left: 0;
+  right: calc(var(--gutter) * var(--u));
+  text-align: center;
+}
+
+.earth-hero-container .navbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  height: calc(88 * var(--u));
+}
+
+.earth-hero-container .navbar::after {
+  content: "";
+  position: absolute;
+  left: calc(25 * var(--u));
+  right: calc(49 * var(--u));
+  top: calc(86 * var(--u));
+  height: calc(2 * var(--u));
+  background: var(--rule);
+}
+
+.earth-hero-container .navrow {
+  position: absolute;
+  left: calc(25 * var(--u));
+  right: calc(49 * var(--u));
+  top: 0;
+  height: calc(86 * var(--u));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.earth-hero-container .logo {
+  font-family: '"Playfair Display", serif';
+  font-size: calc(28 * var(--u));
+  font-weight: 800;
+  letter-spacing: -.03em;
+  color: #fff;
+  text-decoration: none;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: calc(6 * var(--u));
+  text-shadow: 0 calc(1 * var(--u)) calc(4 * var(--u)) rgba(0,0,0,0.8);
+}
+.earth-hero-container .logo em {
+  font-style: normal;
+  font-weight: 600;
+  font-size: calc(15 * var(--u));
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, #9ae6f2, #63c9de);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.earth-hero-container .burger {
+  display: none;
+  position: relative;
+  width: calc(46 * var(--u));
+  height: calc(46 * var(--u));
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(6 * var(--u));
+  flex: none;
+}
+
+.earth-hero-container .burger span {
+  display: block;
+  width: calc(24 * var(--u));
+  height: calc(2 * var(--u));
+  border-radius: calc(2 * var(--u));
+  background: #fff;
+  transition: transform .28s cubic-bezier(.4, 0, .2, 1), opacity .18s linear;
+}
+
+.earth-hero-container .navrow[data-open="true"] .burger span:nth-child(1) {
+  transform: translateY(calc(8 * var(--u))) rotate(45deg);
+}
+
+.earth-hero-container .navrow[data-open="true"] .burger span:nth-child(2) {
+  opacity: 0;
+}
+
+.earth-hero-container .navrow[data-open="true"] .burger span:nth-child(3) {
+  transform: translateY(calc(-8 * var(--u))) rotate(-45deg);
+}
+
+.earth-hero-container .links {
+  display: flex;
+  align-items: center;
+}
+
+.earth-hero-container .links button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.earth-hero-container .links button, .earth-hero-container .links a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: calc(86 * var(--u));
+  font-size: calc(18.4 * var(--u));
+  font-weight: 400;
+  line-height: 1;
+  color: #fff;
+  text-decoration: none;
+  padding: 0 calc(17.5 * var(--u));
+  letter-spacing: calc(-1 * var(--u));
+  white-space: nowrap;
+}
+
+.earth-hero-container .links button[aria-current="page"]::after, .earth-hero-container .links a[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(83.5 * var(--u));
+  height: calc(4 * var(--u));
+  background: var(--cyan);
+  border-radius: calc(1 * var(--u));
+}
+
+.earth-hero-container .links button:nth-child(2), .earth-hero-container .links a:nth-child(2) {
+  margin-left: calc(24 * var(--u));
+}
+
+.earth-hero-container .links button:nth-child(3), .earth-hero-container .links a:nth-child(3) {
+  margin-left: calc(26 * var(--u));
+}
+
+.earth-hero-container .links button:nth-child(4), .earth-hero-container .links a:nth-child(4) {
+  margin-left: calc(27 * var(--u));
+}
+
+.earth-hero-container .links button.enroll, .earth-hero-container .links a.enroll {
+  margin-left: calc(28.5 * var(--u));
+  width: calc(107 * var(--u));
+  height: calc(38 * var(--u));
+  border-radius: calc(19 * var(--u));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(17 * var(--u));
+  font-weight: 600;
+  letter-spacing: calc(-0.75 * var(--u));
+  line-height: 1;
+  color: var(--btn-ink);
+  text-decoration: none;
+  padding-top: calc(2 * var(--u));
+  background: linear-gradient(180deg, #ffffff 0%, #d8ecfe 9%, #dceefe 72%, #f4f9ff 100%);
+  box-shadow: 0 calc(3 * var(--u)) calc(14 * var(--u)) rgba(255, 255, 255, .22), inset 0 0 0 calc(1.5 * var(--u)) rgba(255, 255, 255, .92);
+  flex: none;
+}
+
+.earth-hero-container .eyebrow {
+  top: calc(188.8 * var(--u));
+  font-size: calc(30.45 * var(--u));
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: calc(4 * var(--u));
+  text-indent: calc(4 * var(--u));
+  color: #fff;
+}
+
+.earth-hero-container h1.title {
+  top: calc(268 * var(--u));
+  font-family: 'Prata', Georgia, serif;
+  font-weight: 400;
+  font-size: calc(112.4 * var(--u));
+  line-height: 1;
+  letter-spacing: calc(2 * var(--u));
+  text-indent: calc(2 * var(--u));
+  color: #fff;
+}
+
+.earth-hero-container .rule {
+  top: calc(405.5 * var(--u));
+  height: calc(5 * var(--u));
+  font-size: 0;
+  line-height: 0;
+  padding-right: calc(2 * var(--u));
+}
+
+.earth-hero-container .rule span {
+  display: inline-block;
+  vertical-align: top;
+  width: calc(100 * var(--u));
+  height: 100%;
+  border-radius: calc(2.5 * var(--u));
+  background: var(--cyan);
+}
+
+.earth-hero-container p.lede {
+  top: calc(433.2 * var(--u));
+  font-size: calc(18.36 * var(--u));
+  font-weight: 400;
+  line-height: calc(30 * var(--u));
+  color: rgba(255, 255, 255, .95);
+}
+
+.earth-hero-container .cta {
+  top: calc(597 * var(--u));
+  height: calc(66 * var(--u));
+  isolation: isolate;
+}
+
+.earth-hero-container .cta button.cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(216 * var(--u));
+  height: calc(66 * var(--u));
+  border-radius: calc(33 * var(--u));
+  font-size: calc(17 * var(--u));
+  font-weight: 700;
+  letter-spacing: 0;
+  text-indent: 0;
+  line-height: 1;
+  color: var(--btn-ink);
+  text-decoration: none;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  background: linear-gradient(180deg, #ffffff 0%, #d6e8f8 4%, #d9ecfe 72%, #ffffff 100%);
+  box-shadow: 0 calc(10 * var(--u)) calc(18 * var(--u)) calc(-8 * var(--u)) rgba(255, 255, 255, .50), 0 0 calc(26 * var(--u)) rgba(255, 255, 255, .18), inset 0 0 0 calc(2 * var(--u)) rgba(255, 255, 255, .9);
+}
+
+/* Animations */
+@keyframes ent-reveal {
+  from {
+    transform: translateY(115%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes ent-rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--rise, 10px));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ent-settle {
+  from {
+    opacity: 0;
+    transform: translateY(var(--rise, 8px)) scale(.965);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ent-draw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes ent-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.earth-hero-container.anim {
+  --e-expo: cubic-bezier(.16, 1, .3, 1);
+  --e-quint: cubic-bezier(.22, 1, .36, 1);
+  --e-slow: cubic-bezier(.4, 0, .2, 1);
+}
+
+.earth-hero-container .ent-mask, .earth-hero-container .ent-line {
+  display: block;
+}
+
+.earth-hero-container.anim .ent-mask {
+  overflow: hidden;
+  padding-top: .18em;
+  margin-top: -.18em;
+}
+
+.earth-hero-container.anim .ent-line {
+  transform: translateY(115%);
+  will-change: transform;
+}
+
+.earth-hero-container.anim .navbar::after, .earth-hero-container.anim .links button[aria-current="page"]::after, .earth-hero-container.anim .links a[aria-current="page"]::after, .earth-hero-container.anim .rule span {
+  transform: scaleX(0);
+}
+
+.earth-hero-container.anim .logo, .earth-hero-container.anim .links button, .earth-hero-container.anim .links a, .earth-hero-container.anim .burger, .earth-hero-container.anim p.lede, .earth-hero-container.anim .cta button.cta-btn, .earth-hero-container.anim .sky {
+  opacity: 0;
+}
+
+.earth-hero-container.anim .sky {
+  will-change: opacity;
+}
+
+.earth-hero-container.anim.play .sky {
+  animation: ent-fade 1.6s var(--e-slow) .25s both;
+}
+
+.earth-hero-container.anim.play .navbar::after {
+  animation: ent-draw .9s var(--e-expo) .12s both;
+}
+
+.earth-hero-container.anim.play .logo {
+  --rise: 8u;
+  animation: ent-rise .6s var(--e-quint) .20s both;
+}
+
+.earth-hero-container.anim.play .links button, .earth-hero-container.anim.play .links a {
+  --rise: 8u;
+  animation: ent-rise .55s var(--e-quint) both;
+}
+
+.earth-hero-container.anim.play .links button:nth-child(1), .earth-hero-container.anim.play .links a:nth-child(1) {
+  animation-delay: .26s;
+}
+
+.earth-hero-container.anim.play .links button:nth-child(2), .earth-hero-container.anim.play .links a:nth-child(2) {
+  animation-delay: .31s;
+}
+
+.earth-hero-container.anim.play .links button:nth-child(3), .earth-hero-container.anim.play .links a:nth-child(3) {
+  animation-delay: .36s;
+}
+
+.earth-hero-container.anim.play .links button:nth-child(4), .earth-hero-container.anim.play .links a:nth-child(4) {
+  animation-delay: .41s;
+}
+
+.earth-hero-container.anim.play .links button.enroll, .earth-hero-container.anim.play .links a.enroll, .earth-hero-container.anim.play .burger {
+  --rise: 8u;
+  animation: ent-settle .6s var(--e-quint) .46s both;
+}
+
+.earth-hero-container.anim.play .links button[aria-current="page"]::after, .earth-hero-container.anim.play .links a[aria-current="page"]::after {
+  animation: ent-draw .55s var(--e-expo) .60s both;
+}
+
+.earth-hero-container.anim.play .eyebrow .ent-line {
+  animation: ent-reveal .75s var(--e-expo) .30s both;
+}
+
+.earth-hero-container.anim.play h1.title .ent-line {
+  animation: ent-reveal .95s var(--e-expo) .44s both;
+}
+
+.earth-hero-container.anim.play .rule span {
+  animation: ent-draw .65s var(--e-expo) .78s both;
+}
+
+.earth-hero-container.anim.play p.lede {
+  --rise: 12u;
+  animation: ent-rise .7s var(--e-quint) .86s both;
+}
+
+.earth-hero-container.anim.play .cta button.cta-btn {
+  --rise: 8u;
+  animation: ent-settle .7s var(--e-quint) 1.14s both;
+}
+
+/* RESPONSIVE */
+@media (max-width: 1030px), (max-height: 620px) {
+  .earth-hero-container .navrow {
+    left: calc(25 * var(--u));
+    right: calc(25 * var(--u));
+  }
+  .earth-hero-container .burger {
+    display: flex;
+  }
+  .earth-hero-container .links {
+    position: absolute;
+    top: calc(96 * var(--u));
+    right: 0;
+    z-index: 5;
+    width: min(calc(324 * var(--u)), calc(100vw - 50 * var(--u)));
+    flex-direction: column;
+    align-items: stretch;
+    padding: calc(12 * var(--u));
+    border-radius: calc(20 * var(--u));
+    background: rgba(9, 21, 42, .84);
+    backdrop-filter: blur(calc(18 * var(--u)));
+    border: calc(1 * var(--u)) solid rgba(255, 255, 255, .14);
+    box-shadow: 0 calc(18 * var(--u)) calc(44 * var(--u)) rgba(2, 8, 20, .55);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(calc(-10 * var(--u)));
+    transition: opacity .24s ease, transform .28s cubic-bezier(.4, 0, .2, 1), visibility .28s;
+  }
+  .earth-hero-container .navrow[data-open="true"] .links {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+  }
+  .earth-hero-container .links button:nth-child(n), .earth-hero-container .links a:nth-child(n) {
+    margin-left: 0;
+    height: auto;
+    justify-content: flex-start;
+    padding: calc(14 * var(--u)) calc(16 * var(--u));
+    font-size: calc(19 * var(--u));
+    letter-spacing: calc(-.6 * var(--u));
+  }
+  .earth-hero-container .links button + button, .earth-hero-container .links a + a {
+    border-top: calc(1 * var(--u)) solid rgba(255, 255, 255, .08);
+  }
+  .earth-hero-container .links button[aria-current="page"]::after, .earth-hero-container .links a[aria-current="page"]::after {
+    top: auto;
+    bottom: calc(9 * var(--u));
+    left: calc(16 * var(--u));
+    right: auto;
+    width: calc(26 * var(--u));
+    height: calc(3 * var(--u));
+  }
+  .earth-hero-container .links button.enroll, .earth-hero-container .links a.enroll {
+    margin: calc(14 * var(--u)) 0 calc(2 * var(--u));
+    width: 100%;
+    height: calc(46 * var(--u));
+    border-radius: calc(23 * var(--u));
+    justify-content: center;
+    padding-top: calc(2 * var(--u));
+    font-size: calc(18 * var(--u));
+    letter-spacing: calc(-.4 * var(--u));
+    border-top: 0;
+  }
+  .earth-hero-container .links button.enroll::after, .earth-hero-container .links a.enroll::after {
+    content: none;
+  }
+}
+
+@media (min-width: 580px) and (max-width: 1030px) and (min-height: 621px) {
+  :root {
+    --gutter: 0;
+    --u: min(max(min(.85px, calc(100vh / 780)), min(calc(100vw / 900), calc(100vh / 1163))), 1.15px);
+    --dh-px: calc(1120 * var(--u));
+    --vshift: calc(max(0px, (100vh - var(--dh-px))) * .38);
+  }
+  @supports (height: 100dvh) {
+    :root {
+      --u: min(max(min(.85px, calc(100dvh / 780)), min(calc(100vw / 900), calc(100dvh / 1163))), 1.15px);
+      --vshift: calc(max(0px, (100dvh - var(--dh-px))) * .38);
+    }
+  }
+  .earth-hero-container .navbar::after {
+    left: calc(25 * var(--u));
+    right: calc(25 * var(--u));
+  }
+  .earth-hero-container p.lede br {
+    display: none;
+  }
+  .earth-hero-container p.lede {
+    max-width: calc(620 * var(--u));
+    margin-left: auto;
+    margin-right: auto;
+    text-wrap: pretty;
+  }
+}
+
+@media (max-width: 579px), (max-height: 620px) {
+  :root {
+    --gutter: 0;
+    --u: max(min(.92px, calc(100vh / 620)), min(calc(100vw / 430), calc(100vh / 880)));
+    --dh-px: calc(880 * var(--u));
+    --vshift: calc(max(0px, (100vh - var(--dh-px))) * .34);
+  }
+  @supports (height: 100dvh) {
+    :root {
+      --u: max(min(.92px, calc(100dvh / 620)), min(calc(100vw / 430), calc(100dvh / 880)));
+      --vshift: calc(max(0px, (100dvh - var(--dh-px))) * .34);
+    }
+  }
+  .earth-hero-container .navbar {
+    height: calc(76 * var(--u));
+  }
+  .earth-hero-container .navbar::after {
+    left: calc(24 * var(--u));
+    right: calc(24 * var(--u));
+    top: calc(74 * var(--u));
+  }
+  .earth-hero-container .navrow {
+    left: calc(24 * var(--u));
+    right: calc(24 * var(--u));
+    height: calc(74 * var(--u));
+  }
+  .earth-hero-container .links {
+    top: calc(84 * var(--u));
+  }
+  .earth-hero-container .copy {
+    top: calc(76 * var(--u));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: calc(56 * var(--u)) calc(26 * var(--u)) 0;
+  }
+  .earth-hero-container .col {
+    position: static;
+    width: 100%;
+    right: auto;
+  }
+  .earth-hero-container .eyebrow {
+    font-size: calc(20 * var(--u));
+    letter-spacing: calc(5 * var(--u));
+    text-indent: calc(5 * var(--u));
+  }
+  .earth-hero-container h1.title {
+    font-size: calc(86 * var(--u));
+    margin-top: calc(15 * var(--u));
+  }
+  .earth-hero-container .rule {
+    margin-top: calc(20 * var(--u));
+    height: calc(5 * var(--u));
+    padding-right: 0;
+  }
+  .earth-hero-container .rule span {
+    width: calc(84 * var(--u));
+  }
+  .earth-hero-container p.lede {
+    margin-top: calc(19 * var(--u));
+    font-size: calc(15.5 * var(--u));
+    line-height: calc(26 * var(--u));
+    max-width: calc(400 * var(--u));
+    text-wrap: balance;
+  }
+  .earth-hero-container p.lede br {
+    display: none;
+  }
+  .earth-hero-container .cta {
+    top: auto;
+    margin-top: calc(32 * var(--u));
+    height: calc(60 * var(--u));
+    position: relative;
+  }
+  .earth-hero-container .cta button.cta-btn {
+    width: calc(190 * var(--u));
+    height: calc(60 * var(--u));
+    border-radius: calc(30 * var(--u));
+  }
+}
+
+@media (max-height: 620px) {
+  :root {
+    --u: max(min(.85px, calc(100vh / 470)), min(calc(100vw / 640), calc(100vh / 560)));
+    --dh-px: calc(560 * var(--u));
+    --vshift: 0px;
+  }
+  .earth-hero-container .copy {
+    padding-top: calc(26 * var(--u));
+  }
+  .earth-hero-container h1.title {
+    font-size: calc(64 * var(--u));
+    margin-top: calc(8 * var(--u));
+  }
+  .earth-hero-container .rule {
+    margin-top: calc(12 * var(--u));
+  }
+  .earth-hero-container p.lede {
+    margin-top: calc(12 * var(--u));
+  }
+  .earth-hero-container .cta {
+    margin-top: calc(20 * var(--u));
+  }
+}
+
+@media (min-width: 821px) and (max-height: 660px) {
+  .earth-hero-container .copy {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .earth-hero-container .links, .earth-hero-container .burger span {
+    transition: none;
+  }
+}
