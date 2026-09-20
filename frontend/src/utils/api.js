@@ -1,7 +1,9 @@
 // src/utils/api.js
 // Lightweight API helper that auto-attaches the JWT token from localStorage
 
-const BASE_URL = '/api/v1';
+// Use VITE_API_URL in production (Vercel), otherwise fallback to relative /api/v1 (which uses Vite proxy locally)
+const API_DOMAIN = import.meta.env.VITE_API_URL || '';
+const BASE_URL = `${API_DOMAIN}/api/v1`;
 
 function getHeaders(contentType = 'application/json') {
   const token = localStorage.getItem('satquery_access_token');
