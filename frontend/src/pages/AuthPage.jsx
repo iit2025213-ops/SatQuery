@@ -20,7 +20,8 @@ export default function AuthPage() {
     setLoading(true);
     setErrorMsg('');
     try {
-      const response = await fetch('/api/v1/auth/login', {
+      const API_DOMAIN = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${API_DOMAIN}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -67,7 +68,8 @@ export default function AuthPage() {
     setLoading(true);
     setErrorMsg('');
     try {
-      const response = await fetch('/api/v1/auth/register', {
+      const API_DOMAIN = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${API_DOMAIN}/api/v1/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

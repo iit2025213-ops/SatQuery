@@ -50,7 +50,8 @@ export default function MyUploadsPage() {
     setDeleting(asset_id);
     try {
       const token = localStorage.getItem('satquery_access_token');
-      await fetch(`/api/v1/assets/${asset_id}`, {
+      const API_DOMAIN = import.meta.env.VITE_API_URL || '';
+      await fetch(`${API_DOMAIN}/api/v1/assets/${asset_id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
