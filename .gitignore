@@ -32,15 +32,7 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Model checkpoints (never commit)
-checkpoints/
-models/
-*.pt
-*.pth
-*.bin
-*.safetensors
-*.ckpt
-*.h5
+
 
 # Large generated artifacts & Data
 artifacts/
