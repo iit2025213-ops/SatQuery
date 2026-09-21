@@ -1,0 +1,69 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Model checkpoints (never commit)
+checkpoints/
+models/
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.ckpt
+*.h5
+
+# Large generated artifacts & Data
+artifacts/
+data/
+*.tif
+*.tiff
+*.npy
+*.npz
+*.csv
+*.jsonl
+
+# Scratch & Temporary test scripts/outputs
+scratch/
+tmp/
+temp/
+out.txt
+pytest_out.txt
+pytest_output.txt
+*.log
+
+# Root level test images
+/after.jpeg
+/before.jpeg
+/test_sarmae_input.png
+/test_image.tif
+/received_mask.png

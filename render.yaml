@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: satquery-brain
+    env: python
+    region: oregon
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: OPENAI_MODEL
+        value: gpt-4.1-mini
+      - key: LOG_LEVEL
+        value: INFO
+      - key: CORS_ORIGINS
+        value: "*"
+      # The OPENAI_API_KEY and the 5 Specialist Endpoints MUST be added 
+      # manually in the Render dashboard via the "Environment" tab after deployment.
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GEOCHAT_ENDPOINT
+        sync: false
+      - key: CHANGEFORMER_ENDPOINT
+        sync: false
+      - key: PRITHVI_ENDPOINT
+        sync: false
+      - key: SARMAE_ENDPOINT
+        sync: false
+      - key: SKYSENSE_ENDPOINT
+        sync: false
