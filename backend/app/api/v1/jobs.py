@@ -125,8 +125,8 @@ async def get_job_evidence(
         if not job.data or job.data["user_id"] != user_id:
             raise HTTPException(status_code=403, detail="Not authorized")
 
-        evidence = supabase_client.get_user_client().table("evidence").select("*").eq("job_id", job_id).execute()
-        observations = supabase_client.get_user_client().table("observations").select("*").eq("job_id", job_id).execute()
+        evidence = supabase_client.get_admin_client().table("evidence").select("*").eq("job_id", job_id).execute()
+        observations = supabase_client.get_admin_client().table("observations").select("*").eq("job_id", job_id).execute()
 
         return {
             "job_id": job_id,

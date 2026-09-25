@@ -37,7 +37,8 @@ class Settings(BaseSettings):
     
     # OpenAI (for future LLM integration)
     openai_api_key: Optional[str] = None
-    openai_model: str = "gpt-4.1-mini"
+    openai_base_url: Optional[str] = None
+    openai_model: str = "gpt-4.1-mini-2"
     
     # Google Earth Engine
     gee_service_account_key_path: Optional[str] = None  # Path to service account JSON

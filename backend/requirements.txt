@@ -30,6 +30,7 @@ httpx
 requests
 Pillow>=10.3.0
 openai
+python-docx
 
 # Geospatial
 shapely
@@ -46,6 +47,7 @@ trimesh
 pygltflib
 imageio
 imageio[ffmpeg]
+matplotlib
 
 # Testing
 pytest

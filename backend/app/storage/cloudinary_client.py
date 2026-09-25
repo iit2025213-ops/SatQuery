@@ -44,7 +44,7 @@ class CloudinaryClient:
                 format_override = None
             
             # Upload file
-            response = cloudinary.uploader.upload(
+            response = cloudinary.uploader.upload_large(
                 file_path,
                 public_id=public_id,
                 resource_type=resource_type,
@@ -67,16 +67,20 @@ class CloudinaryClient:
             logger.error(f"Failed to upload artifact: {e}")
             raise
 
-    async def upload_bytes(self, image_bytes: bytes, artifact_type: str, job_id: str, filename: str = "image.png", metadata: dict = None) -> dict:
-        """Upload raw bytes (e.g. PNG from GEE getThumbURL) to Cloudinary."""
+    async def upload_bytes(self, image_bytes: bytes, artifact_type: str, job_id: str, filename: str = "image.png", metadata: dict = None, resource_type: str = "image") -> dict:
+        """Upload raw bytes (e.g. PNG from GEE getThumbURL, or DOCX) to Cloudinary."""
         import io
         try:
-            public_id = f"{self.upload_folder}/{job_id}/{artifact_type}/{filename.rsplit('.', 1)[0]}"
+            # For raw files like docx, Cloudinary includes the extension in the public_id
+            if resource_type == "raw":
+                public_id = f"{self.upload_folder}/{job_id}/{artifact_type}/{filename}"
+            else:
+                public_id = f"{self.upload_folder}/{job_id}/{artifact_type}/{filename.rsplit('.', 1)[0]}"
 
             response = cloudinary.uploader.upload(
                 io.BytesIO(image_bytes),
                 public_id=public_id,
-                resource_type="image",
+                resource_type=resource_type,
                 overwrite=True,
                 tags=[job_id, artifact_type],
                 context=metadata or {}
@@ -94,6 +98,32 @@ class CloudinaryClient:
 
         except Exception as e:
             logger.error(f"Failed to upload bytes to Cloudinary: {e}")
+            raise
+            
+    async def upload_string(self, content: str, artifact_type: str, job_id: str, filename: str = "document.md") -> dict:
+        """Upload raw string (e.g. Markdown text) to Cloudinary."""
+        import io
+        try:
+            public_id = f"{self.upload_folder}/{job_id}/{artifact_type}/{filename}"
+            
+            response = cloudinary.uploader.upload(
+                io.BytesIO(content.encode("utf-8")),
+                public_id=public_id,
+                resource_type="raw",
+                overwrite=True,
+                tags=[job_id, artifact_type]
+            )
+            
+            logger.info(f"Uploaded string artifact: {artifact_type} to {public_id}")
+            
+            return {
+                "artifact_id": response.get("public_id"),
+                "url": response.get("secure_url"),
+                "cloudinary_public_id": response.get("public_id"),
+                "format": "md"
+            }
+        except Exception as e:
+            logger.error(f"Failed to upload string to Cloudinary: {e}")
             raise
     
     def get_signed_url(self, public_id: str, expiration_minutes: int = 60) -> str:

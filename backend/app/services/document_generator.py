@@ -17,7 +17,10 @@ class DocumentGenerator:
     def __init__(self, supabase_client, cloudinary_client):
         self.supabase = supabase_client
         self.cloudinary = cloudinary_client
-        self.openai_client = AsyncOpenAI(api_key=settings.openai_api_key) if settings.openai_api_key else None
+        self.openai_client = AsyncOpenAI(
+            api_key=settings.openai_api_key,
+            base_url=settings.openai_base_url
+        ) if settings.openai_api_key else None
         
     async def generate_markdown_report(self, job_id: str, user_id: str) -> Optional[dict]:
         """

@@ -1,25 +1,47 @@
-import { useState, useCallback } from 'react';
-import Map, { NavigationControl, Source } from 'react-map-gl/mapbox';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import Map, { NavigationControl, Source, Layer, useMap } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 import DrawControl from './DrawControl';
 import GeocoderControl from './GeocoderControl';
 
-export default function AOIMap({ onBoundsChange, onAoiChange }) {
+export default function AOIMap({ onBoundsChange, onAoiChange, imageOverlayUrl, imageOverlayBounds }) {
   const [viewState, setViewState] = useState({
-    longitude: 77.2090, // Delhi, India
-    latitude: 28.6139,
-    zoom: 11,
-    pitch: 60, // Pitched for 3D view
+    longitude: 78.9629, // Center of India
+    latitude: 20.5937,
+    zoom: 2.5, // Zoomed out to see the globe
+    pitch: 0, // 2D view by default
     bearing: 0
   });
 
   const [showLabels, setShowLabels] = useState(true);
-  const [is3D, setIs3D] = useState(true);
+  const [is3D, setIs3D] = useState(false);
   const [features, setFeatures] = useState({});
+  const mapRef = useRef(null);
 
   const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
+
+  // Cinematic fitBounds function
+  const fitAoiBounds = (geometry) => {
+    if (!geometry || !geometry.coordinates || !geometry.coordinates[0]) return;
+    const coords = geometry.coordinates[0];
+    let minLng = 180, minLat = 90, maxLng = -180, maxLat = -90;
+    coords.forEach(pt => {
+      if (pt[0] < minLng) minLng = pt[0];
+      if (pt[0] > maxLng) maxLng = pt[0];
+      if (pt[1] < minLat) minLat = pt[1];
+      if (pt[1] > maxLat) maxLat = pt[1];
+    });
+    if (mapRef.current) {
+      mapRef.current.fitBounds([[minLng, minLat], [maxLng, maxLat]], {
+        padding: 100,
+        duration: 2500, // Smooth cinematic 2.5s flight
+        pitch: 20, // Add slight tilt for drama
+        essential: true
+      });
+    }
+  };
 
   const onUpdate = useCallback(e => {
     setFeatures(currFeatures => {
@@ -30,7 +52,9 @@ export default function AOIMap({ onBoundsChange, onAoiChange }) {
       // Pass the last drawn feature to the parent as the AOI
       const featureList = Object.values(newFeatures);
       if (featureList.length > 0 && onAoiChange) {
-        onAoiChange(featureList[featureList.length - 1].geometry);
+        const geom = featureList[featureList.length - 1].geometry;
+        onAoiChange(geom);
+        fitAoiBounds(geom);
       } else if (featureList.length === 0 && onAoiChange) {
         onAoiChange(null);
       }
@@ -64,9 +88,23 @@ export default function AOIMap({ onBoundsChange, onAoiChange }) {
     ? "mapbox://styles/mapbox/satellite-streets-v12"
     : "mapbox://styles/mapbox/satellite-v9";
 
+  // Dimming mask
+  const currentAoi = Object.values(features).pop()?.geometry;
+  const maskGeoJSON = currentAoi ? {
+    type: "Feature",
+    geometry: {
+      type: "Polygon",
+      coordinates: [
+        [[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]], // World ring
+        currentAoi.coordinates[0] // Inner hole
+      ]
+    }
+  } : null;
+
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <Map
+        ref={mapRef}
         {...viewState}
         onMove={evt => {
           setViewState(evt.viewState);
@@ -77,8 +115,19 @@ export default function AOIMap({ onBoundsChange, onAoiChange }) {
         }}
         mapboxAccessToken={mapboxToken}
         mapStyle={mapStyle}
+        projection="globe"
+        preserveDrawingBuffer={true}
         terrain={is3D ? { source: 'mapbox-dem', exaggeration: 1.5 } : undefined}
       >
+        {maskGeoJSON && (
+          <Source id="dim-mask" type="geojson" data={maskGeoJSON}>
+            <Layer 
+              id="dim-mask-layer" 
+              type="fill" 
+              paint={{ 'fill-color': '#04050d', 'fill-opacity': 0.65 }} 
+            />
+          </Source>
+        )}
         <NavigationControl position="top-right" />
         
         {/* Search Bar (Geocoder) */}
@@ -97,6 +146,31 @@ export default function AOIMap({ onBoundsChange, onAoiChange }) {
           onUpdate={onUpdate}
           onDelete={onDelete}
         />
+        
+        {imageOverlayUrl && imageOverlayBounds && (
+          <>
+            <Source
+              id="timeline-overlay"
+              type="image"
+              url={imageOverlayUrl}
+              coordinates={[
+                [imageOverlayBounds[0], imageOverlayBounds[3]], // top-left
+                [imageOverlayBounds[2], imageOverlayBounds[3]], // top-right
+                [imageOverlayBounds[2], imageOverlayBounds[1]], // bottom-right
+                [imageOverlayBounds[0], imageOverlayBounds[1]]  // bottom-left
+              ]}
+            />
+            <Layer
+              id="timeline-overlay-layer"
+              type="raster"
+              source="timeline-overlay"
+              paint={{
+                'raster-opacity': 1,
+                'raster-fade-duration': 0
+              }}
+            />
+          </>
+        )}
         
         {is3D && (
           <Source

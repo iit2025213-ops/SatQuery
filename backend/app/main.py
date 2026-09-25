@@ -22,6 +22,7 @@ from app.api.v1.aoi import router as aoi_router
 from app.api.v1.gee import router as gee_router
 from app.api.v1.terrain import router as terrain_router
 from app.api.v1.timeline import router as timeline_router
+from app.api.v1.chat import router as chat_router
 from app.api.websocket.routes import router as ws_router
 
 # Initialize logger
@@ -79,6 +80,17 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"⚠️ Supabase connection check failed: {e}")
         
+        # --- STARTUP DIAGNOSTICS ---
+        try:
+            res = supabase_client.get_admin_client().table('evidence').select('*').limit(1).execute()
+            if res.data:
+                logger.info(f"Evidence table columns: {list(res.data[0].keys())}")
+            else:
+                logger.info("Evidence table is empty, cannot infer columns from data.")
+        except Exception as e:
+            logger.error(f"Failed to fetch evidence schema: {e}")
+        # ---------------------------
+
         logger.info("✅ Backend startup complete")
         
     except Exception as e:
@@ -115,6 +127,7 @@ app.include_router(aoi_router)
 app.include_router(gee_router)
 app.include_router(terrain_router)
 app.include_router(timeline_router)
+app.include_router(chat_router)
 app.include_router(ws_router)
 
 # Add middleware

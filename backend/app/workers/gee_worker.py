@@ -129,18 +129,14 @@ async def run_gee_analysis(
             aoi_geojson=aoi_geojson,
         )
 
-        # ── Step 5: Generate NDVI thumbnail URL from GEE ──────────────────
-        ndvi_url = await gee_connector.compute_ndvi_thumbnail_url(
-            scene_id=scene_id,
-            aoi_geojson=aoi_geojson,
-        )
+        # (Index thumbnails are no longer generated blindly here. GeoAgent will selectively request them.)
 
-        # ── Step 6: Get NDVI statistics ────────────────────────────────────
-        ndvi_stats = await gee_connector.get_ndvi_stats(
+        # ── Step 6: Get Spatial statistics ────────────────────────────────────
+        spatial_stats = await gee_connector.get_spatial_stats(
             scene_id=scene_id,
             aoi_geojson=aoi_geojson,
         )
-        ndvi_mean = ndvi_stats["mean"] if ndvi_stats else None
+        ndvi_mean = spatial_stats["ndvi_mean"] if spatial_stats else None
 
         # ── Step 7: Download & Upload to Cloudinary ───────────────────────
         cloudinary_rgb_url = None
@@ -163,23 +159,7 @@ async def run_gee_analysis(
                 except Exception as e:
                     logger.error(f"RGB Cloudinary upload failed: {e}")
 
-        if ndvi_url:
-            logger.info("Downloading NDVI thumbnail from GEE...")
-            ndvi_bytes = await _download_bytes(ndvi_url)
-            if ndvi_bytes:
-                try:
-                    result = await cloudinary_client.upload_bytes(
-                        image_bytes=ndvi_bytes,
-                        artifact_type="ndvi-thumbnail",
-                        job_id=job_id,
-                        filename="ndvi.png",
-                        metadata={"scene_id": scene_id},
-                    )
-                    cloudinary_ndvi_url = result["url"]
-                    logger.info(f"✅ NDVI uploaded to Cloudinary: {cloudinary_ndvi_url}")
-                except Exception as e:
-                    logger.error(f"NDVI Cloudinary upload failed: {e}")
-
+        # Index thumbnail downloads removed.
         # ── Step 8: Save gee_assets rows to Supabase ──────────────────────
         collection_id = str(uuid.uuid4())   # synthetic collection for this job
         try:
@@ -191,6 +171,7 @@ async def run_gee_analysis(
                 "collection_name": "Thumbnails",
                 "status": "completed",
                 "progress_percent": 100,
+                "query_params": {},
             }).execute()
 
             gee_asset_id = str(uuid.uuid4())
@@ -206,19 +187,8 @@ async def run_gee_analysis(
                 "status": "uploaded" if cloudinary_rgb_url else "metadata_stored",
             }).execute()
 
-            if cloudinary_ndvi_url:
-                ndvi_asset_id = str(uuid.uuid4())
-                supabase_client.get_admin_client().table("gee_assets").insert({
-                    "gee_asset_id": ndvi_asset_id,
-                    "collection_id": collection_id,
-                    "job_id": job_id,
-                    "scene_id": scene_id,
-                    "source": f"{source}-NDVI",
-                    "acquisition_date": acq_date,
-                    "cloud_cover_percent": cloud_pct,
-                    "cloudinary_url": cloudinary_ndvi_url,
-                    "status": "uploaded",
-                }).execute()
+            # Only save the RGB asset row (index thumbnails are generated on-demand in chat.py)
+
         except Exception as e:
             logger.error(f"Failed to save gee_assets: {e}")
 
@@ -234,9 +204,8 @@ async def run_gee_analysis(
         ]
 
         if cloudinary_rgb_url:
-            lines.append(f"\n🛰 **True-Color Image:** {cloudinary_rgb_url}")
-        if cloudinary_ndvi_url:
-            lines.append(f"🌱 **NDVI Visualization:** {cloudinary_ndvi_url}")
+            lines.append(f"\n\ud83d\udef0 **True-Color Image:** {cloudinary_rgb_url}")
+
 
         final_answer = "\n".join(lines)
 

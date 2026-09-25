@@ -41,7 +41,7 @@ async def generate_report(
             "doc_type": "analysis_report",
             "format": "md",
             "cloudinary_public_id": doc_metadata["cloudinary_public_id"],
-            "url": doc_metadata["url"]
+            "cloudinary_url": doc_metadata["url"]
         }
         
         # Insert and return
