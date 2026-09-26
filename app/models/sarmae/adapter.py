@@ -73,11 +73,12 @@ class SARMAEAdapter(BaseModelAdapter):
                 "asset_uri": visual_uri,
                 "asset_id": asset_id,
             })
-            if visual_uri and os.path.exists(visual_uri) and not visual_uri.startswith("mock://"):
+            # Only clean up local temp files, not cloud URLs
+            if visual_uri and not visual_uri.startswith("http") and not visual_uri.startswith("mock://") and os.path.exists(visual_uri):
                 os.remove(visual_uri)
             return res
         except RemoteModelError as exc:
-            if visual_uri and os.path.exists(visual_uri) and not visual_uri.startswith("mock://"):
+            if visual_uri and not visual_uri.startswith("http") and not visual_uri.startswith("mock://") and os.path.exists(visual_uri):
                 os.remove(visual_uri)
             return {
                 "_error": str(exc),

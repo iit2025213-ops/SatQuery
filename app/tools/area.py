@@ -53,6 +53,44 @@ def calculate_area_deterministic(
     pixel_width = resolution_m
     pixel_height = resolution_m
     
+    # Handle HTTP/Cloudinary URLs — download to a temp file for rasterio
+    temp_mask_path = None
+    if mask_uri and mask_uri.startswith("http"):
+        try:
+            import httpx
+            resp = httpx.get(mask_uri, timeout=30)
+            resp.raise_for_status()
+            fd, temp_mask_path = tempfile.mkstemp(suffix=".png")
+            os.close(fd)
+            with open(temp_mask_path, "wb") as f:
+                f.write(resp.content)
+            mask_uri = temp_mask_path  # use local copy for rasterio
+        except Exception as exc:
+            return {"error": f"Failed to download mask from URL: {exc}"}
+
+    try:
+        result = _calculate_area_from_uri(mask_uri, mock_changed_pixels, resolution_m, crs_str, bounds)
+    finally:
+        if temp_mask_path and os.path.exists(temp_mask_path):
+            os.remove(temp_mask_path)
+    return result
+
+
+def _calculate_area_from_uri(
+    mask_uri: str | None = None,
+    mock_changed_pixels: int | None = None,
+    resolution_m: float | None = None,
+    crs_str: str | None = None,
+    bounds: list[float] | None = None
+) -> dict:
+    """Internal: calculate area from a local URI."""
+    changed_pixels = mock_changed_pixels
+    valid_pixel_count = 0
+    total_pixel_count = 0
+    provenance = "mock_calculation"
+    pixel_width = resolution_m
+    pixel_height = resolution_m
+    
     if mask_uri and os.path.exists(mask_uri):
         provenance = "rasterio_read"
         try:
