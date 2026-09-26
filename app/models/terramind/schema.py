@@ -7,5 +7,5 @@ from typing import List, Optional
 
 
 class AssetInput(BaseModel):
-    uri: str = Field(..., description="Path or URL to GeoTIFF file")
+    uri: str = Field(..., description="Path or URL to image file (GeoTIFF, PNG, JPEG, etc.)")
     modality: str = Field(default="S2L2A", description="Modality (S2L2A, S1GRD, RGB, etc.)")
