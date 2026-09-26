@@ -21,10 +21,13 @@ def annotate_image(image_uri: str, response_text: str) -> Optional[str]:
     # Wait, the above regex is slightly risky with literals. Let's make it simpler:
     pattern1 = r"\[(\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})\]"
     pattern2 = r"\[(\d{1,3})><(\d{1,3})><(\d{1,3})><(\d{1,3})\]"
+    pattern3 = r"\{<(\d{1,3})><(\d{1,3})><(\d{1,3})><(\d{1,3})>\|(?:[^}]+)\}"
     
     matches = re.findall(pattern1, response_text)
     if not matches:
         matches = re.findall(pattern2, response_text)
+    if not matches:
+        matches = re.findall(pattern3, response_text)
         
     if not matches:
         return None

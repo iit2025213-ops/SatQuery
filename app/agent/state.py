@@ -91,6 +91,10 @@ class AgentState(BaseModel):
         self.evidence[obs.evidence_id] = obs.model_dump(
             exclude={"timestamp"}, mode="json"
         )
+        if obs.artifacts:
+            for artifact in obs.artifacts:
+                if artifact not in self.artifact_ids:
+                    self.artifact_ids.append(artifact)
 
     def record_task(self, record: TaskRecord) -> None:
         if record.status == "success":

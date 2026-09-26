@@ -36,3 +36,13 @@ services:
         sync: false
       - key: PRITHVI_API_KEY
         sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_UPLOAD_FOLDER
+        value: satquery-ai
+      - key: CLOUDINARY_UPLOAD_PRESET
+        value: Satquery

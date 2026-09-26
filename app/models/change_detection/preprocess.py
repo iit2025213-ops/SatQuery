@@ -144,88 +144,6 @@ def _optimal_dimensions(width: int, height: int,
     return round(width * scale), round(height * scale)
 
 
-def _align_images(b_img, a_img):
-    """Align before image to after image using OpenCV feature matching."""
-    try:
-        from PIL import Image
-        try:
-            resample = Image.Resampling.LANCZOS
-        except AttributeError:
-            resample = Image.LANCZOS
-    except ImportError:
-        return b_img
-
-    try:
-        import cv2
-        import numpy as np
-    except ImportError:
-        # Fallback to naive resize if cv2 is not available
-        if b_img.size != a_img.size:
-            return b_img.resize(a_img.size, resample=resample)
-        return b_img
-
-    # Convert to cv2 format (numpy arrays)
-    b_arr = np.array(b_img)
-    a_arr = np.array(a_img)
-
-    # Convert to grayscale
-    b_gray = cv2.cvtColor(b_arr, cv2.COLOR_RGB2GRAY) if b_arr.ndim == 3 else b_arr
-    a_gray = cv2.cvtColor(a_arr, cv2.COLOR_RGB2GRAY) if a_arr.ndim == 3 else a_arr
-
-    # Detect ORB features and compute descriptors
-    MAX_FEATURES = 5000
-    orb = cv2.ORB_create(MAX_FEATURES)
-    keypoints1, descriptors1 = orb.detectAndCompute(b_gray, None)
-    keypoints2, descriptors2 = orb.detectAndCompute(a_gray, None)
-
-    if descriptors1 is None or descriptors2 is None or len(descriptors1) < 10 or len(descriptors2) < 10:
-        if b_img.size != a_img.size:
-            return b_img.resize(a_img.size, resample=resample)
-        return b_img
-
-    # Match features
-    matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-    matches = matcher.match(descriptors1, descriptors2)
-
-    # Sort matches by distance and keep top 20%
-    matches = sorted(matches, key=lambda x: x.distance)
-    keep_fraction = 0.2
-    num_good_matches = int(len(matches) * keep_fraction)
-    matches = matches[:max(num_good_matches, 10)]
-
-    # Extract location of good matches
-    points1 = np.zeros((len(matches), 2), dtype=np.float32)
-    points2 = np.zeros((len(matches), 2), dtype=np.float32)
-
-    for i, match in enumerate(matches):
-        points1[i, :] = keypoints1[match.queryIdx].pt
-        points2[i, :] = keypoints2[match.trainIdx].pt
-
-    # Find homography
-    h, mask = cv2.findHomography(points1, points2, cv2.RANSAC, 5.0)
-    
-    if h is None:
-        if b_img.size != a_img.size:
-            return b_img.resize(a_img.size, resample=resample)
-        return b_img
-
-    # Warp before image to align with after image
-    height, width = a_arr.shape[:2]
-    aligned_b_arr = cv2.warpPerspective(b_arr, h, (width, height))
-    
-    return Image.fromarray(aligned_b_arr)
-
-
-def _enhance_image(img):
-    """Apply mild sharpening to improve blurry images."""
-    try:
-        from PIL import ImageEnhance
-        enhancer = ImageEnhance.Sharpness(img)
-        return enhancer.enhance(1.5)  # Mild sharpening (1.0 is original)
-    except ImportError:
-        return img
-
-
 def coregister_pair(before_data: bytes, after_data: bytes) -> tuple[bytes, bytes]:
     """Co-register and optimally resize two raw images for change detection.
 
@@ -257,15 +175,12 @@ def coregister_pair(before_data: bytes, after_data: bytes) -> tuple[bytes, bytes
     except AttributeError:
         resample = Image.LANCZOS
 
-    # Step 1: Enhance (sharpen) images if they are blurry
-    b_img = _enhance_image(b_img)
-    a_img = _enhance_image(a_img)
-
-    # Step 2: Intelligent Alignment (Homography) to match before to after
-    b_img = _align_images(b_img, a_img)
+    # Step 1: Naive alignment (resize before to match after exactly)
+    w, h = a_img.size
+    if b_img.size != (w, h):
+        b_img = b_img.resize((w, h), resample=resample)
 
     # Step 2: Calculate and apply optimal upscale
-    w, h = a_img.size
     opt_w, opt_h = _optimal_dimensions(w, h)
 
     if (opt_w, opt_h) != (w, h):

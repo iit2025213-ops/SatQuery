@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     # Change Detection (bi-temporal change detection)
     change_detection_endpoint: str = Field(default="", description="Change Detection inference endpoint URL")
     change_detection_api_key: str = Field(default="", description="Change Detection API key")
-    change_detection_timeout_seconds: float = Field(default=180, ge=1, description="Change Detection request timeout")
+    change_detection_timeout_seconds: float = Field(default=600, ge=1, description="Change Detection request timeout")
 
     # Prithvi (multispectral foundation model)
     prithvi_endpoint: str = Field(default="", description="Prithvi inference endpoint URL")
@@ -62,6 +62,13 @@ class Settings(BaseSettings):
     terramind_endpoint: str = Field(default="", description="TerraMind inference endpoint URL")
     terramind_api_key: str = Field(default="", description="TerraMind API key")
     terramind_timeout_seconds: int = Field(default=1200, ge=1, description="TerraMind request timeout")
+
+    # --- Cloudinary ---
+    cloudinary_cloud_name: str = Field(default="", description="Cloudinary cloud name")
+    cloudinary_api_key: str = Field(default="", description="Cloudinary API key")
+    cloudinary_api_secret: str = Field(default="", description="Cloudinary API secret")
+    cloudinary_upload_folder: str = Field(default="satquery-ai", description="Cloudinary folder")
+    cloudinary_upload_preset: str = Field(default="Satquery", description="Cloudinary preset")
 
     # --- Logging ---
     log_level: str = Field(default="INFO", description="Logging level")

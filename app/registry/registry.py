@@ -99,12 +99,18 @@ def build_default_registry() -> CapabilityRegistry:
     # GeoChat capabilities
     for cap_name in (
         "answer_remote_sensing_vqa",
-        "generate_caption",
-        "ground_region",
         "interpret_scene",
         "answer_change_vqa",
     ):
         registry.register(BUILTIN_CAPABILITIES[cap_name], GeoChatAdapter)
+
+    # GPT Vision capabilities
+    from app.models.gpt_vision_adapter import GPTVisionAdapter
+    for cap_name in (
+        "ground_region",
+        "generate_caption",
+    ):
+        registry.register(BUILTIN_CAPABILITIES[cap_name], GPTVisionAdapter)
 
     # ChangeDetection
     registry.register(

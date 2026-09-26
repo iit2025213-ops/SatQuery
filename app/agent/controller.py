@@ -141,8 +141,8 @@ class AgentController:
                     # Log the evaluation to the trace
                     self.trace.record(
                         action="EVALUATE_SPECIALIST",
-                        output_refs=[ev_id],
-                        confidence=score,
+                        evidence_id=ev_id,
+                        score=score,
                         status="evaluated"
                     )
 

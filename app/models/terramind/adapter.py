@@ -138,13 +138,17 @@ class TerraMindAdapter(BaseModelAdapter):
             )
             
         evidence_type = EvidenceType.MULTIMODAL
+        artifacts = []
         
-        # Check if there are generated PNGs
+        # Check if there are generated PNGs and upload to Cloudinary
         if cap == "terramind_generate" and "outputs" in raw:
+            from app.utils.upload import upload_image_base64
             for mod, data in raw["outputs"].items():
                 if "png_base64" in data:
                     evidence_type = EvidenceType.IMAGE_PROCESSING
-                    break
+                    url = upload_image_base64(data["png_base64"], f"terramind_{mod}")
+                    if url:
+                        artifacts.append(url)
         
         # Remove massive raw tensors to avoid agent memory bloat, unless specifically needed
         result_clean = raw.copy()
@@ -152,6 +156,8 @@ class TerraMindAdapter(BaseModelAdapter):
              for k, v in result_clean["outputs"].items():
                   if isinstance(v, dict) and "data_b64_npy" in v:
                        del v["data_b64_npy"]
+                  if isinstance(v, dict) and "png_base64" in v:
+                       del v["png_base64"] # We uploaded it, no need to keep b64 in memory
         if "data_b64_npy" in result_clean:
              del result_clean["data_b64_npy"]
         if "final_layer_b64_npy" in result_clean:
@@ -167,4 +173,5 @@ class TerraMindAdapter(BaseModelAdapter):
             type=evidence_type,
             status=ObservationStatus.SUCCESS,
             result=result_clean,
+            artifacts=artifacts,
         )

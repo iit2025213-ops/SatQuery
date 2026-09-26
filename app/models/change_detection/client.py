@@ -24,7 +24,7 @@ _OPTIONAL_PARAMS = ("scales", "quorum", "threshold", "min_area", "tta")
 class ChangeDetectionClient(RemoteModelClient):
     """HTTP client for the hosted Change_detection service (LitServe on Lightning AI)."""
 
-    def __init__(self, *, endpoint: str, api_key: str = "", timeout_seconds: float = 180) -> None:
+    def __init__(self, *, endpoint: str, api_key: str = "", timeout_seconds: float = 600) -> None:
         super().__init__(
             model_name=MODEL_NAME,
             endpoint=endpoint,
@@ -113,8 +113,17 @@ class ChangeDetectionClient(RemoteModelClient):
         return path
 
     def _parse_response(self, raw: dict[str, Any]) -> dict[str, Any]:
-        mask_uri = self._write_png(raw.get("mask_png_base64", ""), "changedet_mask_")
-        overlay_uri = self._write_png(raw.get("overlay_png_base64", ""), "changedet_overlay_")
+        from app.utils.upload import upload_image_base64
+        mask_uri = ""
+        overlay_uri = ""
+        
+        mask_b64 = raw.get("mask_png_base64", "")
+        if mask_b64:
+            mask_uri = upload_image_base64(mask_b64, "changedet_mask") or self._write_png(mask_b64, "changedet_mask_")
+            
+        overlay_b64 = raw.get("overlay_png_base64", "")
+        if overlay_b64:
+            overlay_uri = upload_image_base64(overlay_b64, "changedet_overlay") or self._write_png(overlay_b64, "changedet_overlay_")
 
         width, height = int(raw.get("width", 0) or 0), int(raw.get("height", 0) or 0)
         total = int(raw.get("total_pixels") or width * height)
