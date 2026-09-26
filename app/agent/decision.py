@@ -40,7 +40,7 @@ class Decision(BaseModel):
         description="Capability name — required for CALL_CAPABILITY / RETRY",
     )
     arguments: dict[str, Any] = Field(default_factory=dict)
-    reason: str = Field(
+    reason: str | None = Field(
         default="",
         description="Short observable rationale (NOT chain-of-thought)",
     )
@@ -48,7 +48,7 @@ class Decision(BaseModel):
         default_factory=list,
         description="For PARALLEL action — list of {capability, arguments}",
     )
-    final_answer: str = Field(
+    final_answer: str | None = Field(
         default="",
         description="Synthesised answer when action is FINAL",
     )
