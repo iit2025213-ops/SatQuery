@@ -156,6 +156,17 @@ class VisualPreviewAdapter(BaseModelAdapter):
             uri = f"mock://images/{asset_id}.tif"
             
         result = create_visual_preview(input_uri=uri)
+        
+        # Upload temp preview to Cloudinary so the result is a persistent cloud URL
+        if result.get("preview_uri") and not result["preview_uri"].startswith("mock://"):
+            try:
+                from app.utils.upload import upload_image_file
+                cloud_url = upload_image_file(result["preview_uri"], prefix="visual_preview")
+                if cloud_url:
+                    result["preview_uri"] = cloud_url
+            except Exception as e:
+                logger.warning("Failed to upload visual preview to Cloudinary: %s", e)
+        
         return result
 
     def normalize_output(

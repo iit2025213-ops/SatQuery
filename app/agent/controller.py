@@ -141,9 +141,10 @@ class AgentController:
                     # Log the evaluation to the trace
                     self.trace.record(
                         action="EVALUATE_SPECIALIST",
-                        evidence_id=ev_id,
-                        score=score,
-                        status="evaluated"
+                        capability=ev_id,
+                        confidence=score,
+                        status="evaluated",
+                        rationale=f"LLM assigned score {score:.2f} to evidence {ev_id}",
                     )
 
             # 5. Dispatch based on action

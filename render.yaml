@@ -16,6 +16,8 @@ services:
       # manually in the Render dashboard via the "Environment" tab after deployment.
       - key: OPENAI_API_KEY
         sync: false
+      - key: OPENAI_BASE_URL
+        sync: false
       - key: GEOCHAT_ENDPOINT
         sync: false
       - key: GEOCHAT_API_KEY
