@@ -37,6 +37,21 @@ class GeoChatClient(RemoteModelClient):
         import os
         from app.llm.openai import OpenAIProvider
         
+        import io
+        from PIL import Image
+        
+        def _resize_and_b64(raw_data: bytes) -> str | None:
+            try:
+                img = Image.open(io.BytesIO(raw_data))
+                img.thumbnail((1024, 1024))
+                if img.mode != "RGB":
+                    img = img.convert("RGB")
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                return base64.b64encode(buf.getvalue()).decode("utf-8")
+            except Exception:
+                return None
+
         images: list[str] = []
         asset_uris = payload.get("asset_uris", [])
         for uri in asset_uris:
@@ -50,9 +65,9 @@ class GeoChatClient(RemoteModelClient):
                     with _httpx.Client(timeout=30) as _client:
                         resp = _client.get(uri)
                         resp.raise_for_status()
-                        raw_bytes = resp.content
-                        b64 = base64.b64encode(raw_bytes).decode("utf-8")
-                        images.append(b64)
+                        b64 = _resize_and_b64(resp.content)
+                        if b64:
+                            images.append(b64)
                         continue
                 except Exception:
                     continue
@@ -63,8 +78,9 @@ class GeoChatClient(RemoteModelClient):
             loaded = OpenAIProvider._load_image_bytes_for_llm(uri)
             if loaded:
                 raw_bytes, mime = loaded
-                b64 = base64.b64encode(raw_bytes).decode("utf-8")
-                images.append(b64)
+                b64 = _resize_and_b64(raw_bytes)
+                if b64:
+                    images.append(b64)
 
         body = {
             "images": images,
