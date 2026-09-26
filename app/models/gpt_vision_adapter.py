@@ -66,13 +66,16 @@ class GPTVisionAdapter(BaseModelAdapter):
                         asset_uri = a.uri
                         break
 
+        # --- Load image bytes (supports both http URLs and local files) ---
+        image_bytes: bytes | None = None
         if asset_uri and asset_uri.startswith("http"):
             import httpx
             try:
-                async with httpx.AsyncClient() as http_client:
+                async with httpx.AsyncClient(timeout=30) as http_client:
                     resp = await http_client.get(asset_uri)
                     resp.raise_for_status()
-                    b64 = base64.b64encode(resp.content).decode("utf-8")
+                    image_bytes = resp.content
+                    b64 = base64.b64encode(image_bytes).decode("utf-8")
             except Exception as e:
                 return {
                     "_error": f"Failed to download image from {asset_uri}: {e}",
@@ -89,7 +92,8 @@ class GPTVisionAdapter(BaseModelAdapter):
 
             try:
                 with open(asset_uri, "rb") as f:
-                    b64 = base64.b64encode(f.read()).decode("utf-8")
+                    image_bytes = f.read()
+                b64 = base64.b64encode(image_bytes).decode("utf-8")
             except Exception as e:
                 return {
                     "_error": f"Failed to read image: {e}",
@@ -164,7 +168,12 @@ class GPTVisionAdapter(BaseModelAdapter):
             if cap == "ground_region":
                 try:
                     data = json.loads(raw_text)
-                    return {"result": data, "original_image": asset_uri}
+                    # Store raw bytes (not URL) so normalize_output can draw boxes synchronously
+                    return {
+                        "result": data,
+                        "original_image": asset_uri,
+                        "_image_bytes": image_bytes,  # raw bytes for PIL drawing
+                    }
                 except json.JSONDecodeError:
                     return {
                         "_error": f"Failed to parse GPT JSON output: {raw_text}",
@@ -208,8 +217,18 @@ class GPTVisionAdapter(BaseModelAdapter):
             import io
             
             try:
-                # Draw boxes
-                img = Image.open(raw["original_image"]).convert("RGB")
+                # Draw boxes — use pre-loaded bytes if available (avoids opening URL as file path)
+                import io as _io
+                _img_bytes = raw.get("_image_bytes")
+                if _img_bytes:
+                    img = Image.open(_io.BytesIO(_img_bytes)).convert("RGB")
+                elif raw.get("original_image", "").startswith("http"):
+                    import httpx as _httpx
+                    _resp = _httpx.get(raw["original_image"], timeout=30)
+                    _resp.raise_for_status()
+                    img = Image.open(_io.BytesIO(_resp.content)).convert("RGB")
+                else:
+                    img = Image.open(raw["original_image"]).convert("RGB")
                 W, H = img.size
                 draw = ImageDraw.Draw(img)
                 
