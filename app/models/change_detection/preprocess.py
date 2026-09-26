@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import io
 
-MAX_SIDE = 2048  # keep in sync with the service's MAX_SIDE
+MAX_SIDE = 1024  # Reduced from 2048 to prevent massive base64 payloads over slow network proxies
 
 
 class ImagePreparationError(ValueError):
