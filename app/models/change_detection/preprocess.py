@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import io
 
-MAX_SIDE = 1024  # Reduced from 2048 to prevent massive base64 payloads over slow network proxies
+MAX_SIDE = 2048  # keep in sync with the service's MAX_SIDE
 
 
 class ImagePreparationError(ValueError):
@@ -72,29 +72,20 @@ def to_rgb8_png(data: bytes) -> bytes:
     except Exception:
         image = None  # e.g. a multi-band GeoTIFF that Pillow cannot decode -> try rasterio below
 
-    if image is not None and image.format in ("PNG", "JPEG") and image.mode == "RGB":
-        rgb = image
-        passthrough = True
-    elif image is not None and image.mode in ("RGBA", "LA", "L", "P", "1"):
-        rgb = image.convert("RGB")
-        passthrough = False
+    if image is not None:
+        if image.mode != "RGB":
+            rgb = image.convert("RGB")
+            passthrough = False
+        else:
+            rgb = image
+            passthrough = (image.format in ("PNG", "JPEG"))
     else:
         try:
             rgb = _read_with_rasterio(data)
         except ImportError:
-            if image is None:
-                raise ImagePreparationError(
-                    "Cannot read this image (probably a multi-band or 16-bit GeoTIFF). Install 'rasterio'."
-                )
-            try:  # Pillow could read it (e.g. 16-bit grayscale / plain TIFF): stretch it ourselves
-                import numpy as np
-
-                arr = np.asarray(image)
-                if arr.ndim == 2:
-                    arr = np.repeat(arr[..., None], 3, axis=-1)
-                rgb = Image.fromarray(_stretch_to_uint8(arr[..., :3]))
-            except Exception as exc:
-                raise ImagePreparationError(f"Unsupported image format/mode ({image.mode}): {exc}")
+            raise ImagePreparationError(
+                "Cannot read this image (probably a multi-band or 16-bit GeoTIFF). Install 'rasterio'."
+            )
         except Exception as exc:
             raise ImagePreparationError(f"Could not read the image: {exc}")
         passthrough = False
