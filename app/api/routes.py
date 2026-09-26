@@ -182,14 +182,21 @@ async def get_job_report(job_id: str):
     return JobReportResponse(job_id=job_id, report_markdown="\n".join(lines))
 
 
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 import os
 
 @router.get("/artifacts/{artifact_id:path}")
 async def get_artifact(artifact_id: str):
-    """Retrieve a generated artifact file."""
-    # Note: artifact_id might be an absolute path depending on the executor.
-    # In production with cloud storage, this would return a pre-signed URL or stream.
+    """Retrieve a generated artifact file.
+    
+    If the artifact_id is a Cloudinary URL, redirect the client directly.
+    Otherwise, serve the local file.
+    """
+    # Cloud artifact: redirect to cloud URL
+    if artifact_id.startswith("http://") or artifact_id.startswith("https://"):
+        return RedirectResponse(url=artifact_id)
+    
+    # Local artifact: serve file
     if not os.path.exists(artifact_id):
         raise HTTPException(status_code=404, detail="Artifact not found or not accessible locally")
     return FileResponse(artifact_id)
