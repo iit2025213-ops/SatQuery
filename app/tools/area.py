@@ -57,11 +57,11 @@ def calculate_area_deterministic(
         provenance = "rasterio_read"
         try:
             with rasterio.open(mask_uri) as src:
-                # 1. STRICT VALIDATION: Require CRS and Transform
-                if not src.crs:
-                    return {"error": "Strict validation failed: Change mask is missing CRS."}
-                if not src.transform:
-                    return {"error": "Strict validation failed: Change mask is missing affine transform."}
+                # 1. VALIDATION: Require CRS and Transform, unless resolution is explicitly provided
+                if not src.crs and not resolution_m:
+                    return {"error": "Strict validation failed: Change mask is missing CRS and no explicit resolution_m provided."}
+                if not src.transform and not resolution_m:
+                    return {"error": "Strict validation failed: Change mask is missing affine transform and no explicit resolution_m provided."}
                     
                 mask = src.read(1)
                 total_pixel_count = mask.size
@@ -76,11 +76,15 @@ def calculate_area_deterministic(
                 changed_pixels = int(np.sum(valid_mask > 0))
                 
                 # Ensure we have resolution, CRS, and bounds from the actual file
-                if len(src.res) == 2:
+                if len(src.res) == 2 and src.res[0] != 1.0 and src.res[1] != 1.0:
                     pixel_width = abs(src.res[0])
                     pixel_height = abs(src.res[1])
-                crs_str = f"EPSG:{src.crs.to_epsg()}" if src.crs.is_epsg_code else src.crs.to_wkt()
-                bounds = [src.bounds.left, src.bounds.bottom, src.bounds.right, src.bounds.top]
+                
+                if src.crs:
+                    crs_str = f"EPSG:{src.crs.to_epsg()}" if src.crs.is_epsg_code else src.crs.to_wkt()
+                
+                if src.transform and src.transform != rasterio.Affine(1, 0, 0, 0, 1, 0):
+                    bounds = [src.bounds.left, src.bounds.bottom, src.bounds.right, src.bounds.top]
         except Exception as exc:
             logger.error("Failed to read mask for area calculation: %s", exc)
             return {"error": f"Failed to read mask: {exc}"}

@@ -14,15 +14,20 @@ def annotate_image(image_uri: str, response_text: str) -> Optional[str]:
     Expects normalized coordinates on a 0-100 scale.
     Returns the path to the annotated temporary image, or None if no boxes found.
     """
-    # Regex to find boxes formatted as [ymin, xmin, ymax, xmax]
-    # We look for 4 numbers inside brackets, separated by commas
-    pattern = r"\[(\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})\]"
-    matches = re.findall(pattern, response_text)
+    # Regex to find boxes formatted as [ymin, xmin, ymax, xmax] OR [ymin><xmin><ymax><xmax]
+    import re
+    # Match either format
+    pattern = r"\[\s*(\d{1,3})\s*(?:,\|><)\s*(\d{1,3})\s*(?:,\|><)\s*(\d{1,3})\s*(?:,\|><)\s*(\d{1,3})\s*\]"
+    # Wait, the above regex is slightly risky with literals. Let's make it simpler:
+    pattern1 = r"\[(\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})\]"
+    pattern2 = r"\[(\d{1,3})><(\d{1,3})><(\d{1,3})><(\d{1,3})\]"
     
+    matches = re.findall(pattern1, response_text)
+    if not matches:
+        matches = re.findall(pattern2, response_text)
+        
     if not matches:
         return None
-        
-    try:
         # Load the image
         if image_uri.startswith("http://") or image_uri.startswith("https://"):
             import requests

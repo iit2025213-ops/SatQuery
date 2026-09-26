@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     openai_max_retries: int = Field(
         default=2, ge=0, description="Max retries for OpenAI API calls"
     )
+    openai_max_tokens_decide: int = Field(
+        default=800, ge=1, description="Max output tokens for decide() calls"
+    )
+    openai_max_tokens_synthesize: int = Field(
+        default=1200, ge=1, description="Max output tokens for synthesize() calls"
+    )
 
     # --- Agent limits ---
     max_steps: int = Field(default=20, ge=1, description="Maximum agent loop steps")
@@ -35,11 +41,12 @@ class Settings(BaseSettings):
     geochat_endpoint: str = Field(default="", description="GeoChat inference endpoint URL")
     geochat_api_key: str = Field(default="", description="GeoChat API key")
     geochat_timeout_seconds: int = Field(default=1200, ge=1, description="GeoChat request timeout")
+   
 
-    # ChangeFormer (bi-temporal change detection)
-    changeformer_endpoint: str = Field(default="", description="ChangeFormer inference endpoint URL")
-    changeformer_api_key: str = Field(default="", description="ChangeFormer API key")
-    changeformer_timeout_seconds: int = Field(default=1200, ge=1, description="ChangeFormer request timeout")
+    # Change Detection (bi-temporal change detection)
+    change_detection_endpoint: str = Field(default="", description="Change Detection inference endpoint URL")
+    change_detection_api_key: str = Field(default="", description="Change Detection API key")
+    change_detection_timeout_seconds: float = Field(default=180, ge=1, description="Change Detection request timeout")
 
     # Prithvi (multispectral foundation model)
     prithvi_endpoint: str = Field(default="", description="Prithvi inference endpoint URL")

@@ -32,17 +32,22 @@ ENV/
 .DS_Store
 Thumbs.db
 
-
-
 # Large generated artifacts & Data
 artifacts/
 data/
+datasets/
+weights/
 *.tif
 *.tiff
 *.npy
 *.npz
 *.csv
 *.jsonl
+*.h5
+*.pt
+*.pth
+*.ckpt
+*.safetensors
 
 # Scratch & Temporary test scripts/outputs
 scratch/
@@ -53,9 +58,15 @@ pytest_out.txt
 pytest_output.txt
 *.log
 
-# Root level test images
-/after.jpeg
-/before.jpeg
-/test_sarmae_input.png
-/test_image.tif
+# Root level test images / temporary files
+*.png
+*.jpeg
+*.jpg
+*.gif
+!app/**/*.png
+!app/**/*.jpg
+!tests/**/*.png
+!tests/**/*.jpg
+
+/test_*
 /received_mask.png

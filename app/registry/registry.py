@@ -73,7 +73,7 @@ class CapabilityRegistry:
 def build_default_registry() -> CapabilityRegistry:
     """Build a registry pre-loaded with all built-in mock adapters."""
     from app.models.geochat.adapter import GeoChatAdapter
-    from app.models.changeformer.adapter import ChangeFormerAdapter
+    from app.models.change_detection.adapter import ChangeDetectionAdapter
     from app.models.prithvi.adapter import PrithviAdapter
     from app.models.sarmae.adapter import SARMAEAdapter
     from app.models.terramind.adapter import TerraMindAdapter
@@ -102,12 +102,13 @@ def build_default_registry() -> CapabilityRegistry:
         "generate_caption",
         "ground_region",
         "interpret_scene",
+        "answer_change_vqa",
     ):
         registry.register(BUILTIN_CAPABILITIES[cap_name], GeoChatAdapter)
 
-    # ChangeFormer
+    # ChangeDetection
     registry.register(
-        BUILTIN_CAPABILITIES["detect_bitemporal_change"], ChangeFormerAdapter
+        BUILTIN_CAPABILITIES["detect_bitemporal_change"], ChangeDetectionAdapter
     )
 
     # Prithvi
@@ -121,9 +122,13 @@ def build_default_registry() -> CapabilityRegistry:
     )
 
     # TerraMind
-    registry.register(
-        BUILTIN_CAPABILITIES["perform_multimodal_analysis"], TerraMindAdapter
-    )
+    for cap_name in (
+        "terramind_embedding",
+        "terramind_tim",
+        "terramind_generate",
+        "terramind_coordinate_tokenizer",
+    ):
+        registry.register(BUILTIN_CAPABILITIES[cap_name], TerraMindAdapter)
 
     # Geospatial tools
     registry.register(

@@ -167,6 +167,11 @@ class AgentController:
                 self._handle_request_input(decision, state)
                 break  # pause for user
 
+            elif decision.action == ActionType.CONVERSATIONAL:
+                # Pure conversational response — no models invoked
+                self._handle_conversational(decision, state)
+                break
+
         # Guard: max steps exceeded
         if state.final_result is None:
             state.final_result = {
@@ -304,6 +309,19 @@ class AgentController:
         self.trace.record(
             action="REQUEST_INPUT",
             status="paused",
+            rationale=decision.reason,
+        )
+
+    def _handle_conversational(self, decision: Decision, state: AgentState) -> None:
+        """Handle pure conversational responses — no models invoked."""
+        state.final_result = {
+            "answer": decision.final_answer or decision.reason,
+            "confidence": 1.0,
+            "status": "conversational",
+        }
+        self.trace.record(
+            action="CONVERSATIONAL",
+            status="complete",
             rationale=decision.reason,
         )
 

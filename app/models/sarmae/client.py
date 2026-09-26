@@ -23,15 +23,35 @@ class SARMAEClient(RemoteModelClient):
         
     async def infer(self, payload: dict[str, Any]) -> dict[str, Any]:
         asset_uri = payload.get("asset_uri", "")
-        if not asset_uri or not os.path.exists(asset_uri):
+        if not asset_uri:
             raise RemoteModelError(
                 model="SARMAE",
-                message=f"Local asset not found for base64 encoding: {asset_uri}",
+                message="No asset_uri provided",
                 retryable=False
             )
-            
-        with open(asset_uri, "rb") as f:
-            img_bytes = f.read()
+
+        if asset_uri.startswith("http"):
+            try:
+                import httpx as _httpx
+                async with _httpx.AsyncClient(timeout=30) as _client:
+                    resp = await _client.get(asset_uri)
+                    resp.raise_for_status()
+                    img_bytes = resp.content
+            except Exception as e:
+                raise RemoteModelError(
+                    model="SARMAE",
+                    message=f"Failed to download image from {asset_uri}: {e}",
+                    retryable=True
+                )
+        else:
+            if not os.path.exists(asset_uri):
+                raise RemoteModelError(
+                    model="SARMAE",
+                    message=f"Local asset not found for base64 encoding: {asset_uri}",
+                    retryable=False
+                )
+            with open(asset_uri, "rb") as f:
+                img_bytes = f.read()
             
         payload["image_b64"] = base64.b64encode(img_bytes).decode("utf-8")
         return await super().infer(payload)

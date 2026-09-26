@@ -104,6 +104,19 @@ BUILTIN_CAPABILITIES: dict[str, CapabilityDefinition] = {
         accepted_modalities=[Modality.OPTICAL],
         output_type="scene_interpretation",
     ),
+    "answer_change_vqa": CapabilityDefinition(
+        name="answer_change_vqa",
+        description=(
+            "Answer a natural-language question about what changed between two "
+            "temporal satellite images (GeoChat CDVQA: e.g. 'what changed here?', "
+            "'did the building expand?')."
+        ),
+        required_asset_count=2,
+        accepted_modalities=[Modality.OPTICAL],
+        requires_temporal_pair=True,
+        requires_spatial_overlap=True,
+        output_type="change_vqa",
+    ),
 
     # --- Change detection ---
     "detect_bitemporal_change": CapabilityDefinition(
@@ -131,10 +144,31 @@ BUILTIN_CAPABILITIES: dict[str, CapabilityDefinition] = {
         accepted_modalities=[Modality.SAR],
         output_type="sar",
     ),
-    "perform_multimodal_analysis": CapabilityDefinition(
-        name="perform_multimodal_analysis",
-        description="Cross-modal analysis combining optical and SAR. Can perform unsupervised segmentation. Provide 'num_classes' in arguments if the user requests a specific number of clusters/classes.",
+    "terramind_embedding": CapabilityDefinition(
+        name="terramind_embedding",
+        description="Extract feature embeddings from the TerraMind Large backbone. Provide 'merge_method' (mean, max, concat, dict, none) and 'modality' (e.g. S2L2A, S2L1C, S1GRD, S1RTC, RGB, DEM) in arguments.",
         required_asset_count=1,
+        accepted_modalities=[Modality.ANY],
+        output_type="multimodal",
+    ),
+    "terramind_tim": CapabilityDefinition(
+        name="terramind_tim",
+        description="Run TerraMind Thinking-in-Modalities (TiM) inference. Provide 'tim_modalities' (e.g. LULC, NDVI) and 'modality' in arguments.",
+        required_asset_count=1,
+        accepted_modalities=[Modality.ANY],
+        output_type="multimodal",
+    ),
+    "terramind_generate": CapabilityDefinition(
+        name="terramind_generate",
+        description="Generate arbitrary modalities from input using TerraMind. Provide 'output_modalities' (e.g. S1GRD, LULC, DEM, NDVI), 'modality' of input, and 'timesteps' in arguments.",
+        required_asset_count=1,
+        accepted_modalities=[Modality.ANY],
+        output_type="multimodal",
+    ),
+    "terramind_coordinate_tokenizer": CapabilityDefinition(
+        name="terramind_coordinate_tokenizer",
+        description="Encode or decode lon/lat coordinates using the TerraMind spatial tokenizer.",
+        required_asset_count=0,
         accepted_modalities=[Modality.ANY],
         output_type="multimodal",
     ),
@@ -148,7 +182,7 @@ BUILTIN_CAPABILITIES: dict[str, CapabilityDefinition] = {
     ),
     "calculate_changed_area": CapabilityDefinition(
         name="calculate_changed_area",
-        description="Compute the changed area from a change mask.",
+        description="Compute the exact geographical area (in square meters and km2) of the changed pixels. Provide the 'change_mask' argument with the URI of the mask returned by detect_bitemporal_change.",
         required_asset_count=0,
         output_type="area_calculation",
     ),

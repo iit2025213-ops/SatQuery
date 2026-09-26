@@ -35,9 +35,12 @@ class GeoChatAdapter(BaseModelAdapter):
     """Adapter for the GeoChat vision-language model."""
 
     def validate_input(self, arguments: dict[str, Any]) -> tuple[bool, str]:
-        """Validate input arguments."""
-        if not arguments.get("asset"):
-            return False, "GeoChat requires an 'asset' argument."
+        """Validate input arguments. Accepts either a single 'asset' or a
+        list 'assets' (for two-image CDVQA change-VQA capabilities)."""
+        if not arguments.get("asset") and not arguments.get("assets"):
+            return False, "GeoChat requires an 'asset' (or 'assets' for change-VQA) argument."
+        if arguments.get("assets") and len(arguments["assets"]) not in (1, 2):
+            return False, "GeoChat 'assets' must contain exactly one or two asset IDs."
         return True, ""
 
     async def predict(self, arguments: dict[str, Any]) -> dict[str, Any]:
@@ -49,23 +52,35 @@ class GeoChatAdapter(BaseModelAdapter):
             timeout_seconds=settings.geochat_timeout_seconds,
         )
 
-        # Resolve asset URI from state if available
         state = arguments.get("_state")
-        asset_id = arguments.get("asset", "")
-        asset_uri = ""
-        if state:
-            for a in state.input_assets:
-                if a.asset_id == asset_id:
-                    asset_uri = a.uri
-                    break
 
-        prompt = arguments.get("prompt", "Describe the major objects, land-cover characteristics, and spatial patterns visible in this satellite image.")
+        # asset_ids: prefer 'assets' (list, for change-VQA), fall back to
+        # single 'asset' (existing single-image capabilities).
+        asset_ids = arguments.get("assets")
+        if not asset_ids:
+            single = arguments.get("asset", "")
+            asset_ids = [single] if single else []
+
+        asset_uris: list[str] = []
+        if state:
+            for asset_id in asset_ids:
+                for a in state.input_assets:
+                    if a.asset_id == asset_id:
+                        asset_uris.append(a.uri)
+                        break
+
+        prompt = arguments.get(
+            "prompt",
+            "Describe the major objects, land-cover characteristics, and spatial patterns visible in this satellite image.",
+        )
 
         try:
             result = await client.infer({
-                "asset_uri": asset_uri,
+                "asset_uris": asset_uris,
                 "prompt": prompt,
-                "asset_id": asset_id,
+                "asset_id": asset_ids[0] if asset_ids else "",
+                "max_new_tokens": arguments.get("max_new_tokens", 256),
+                "temperature": arguments.get("temperature", 0.0),
             })
             return result
         except EndpointNotConfiguredError as exc:
@@ -120,29 +135,30 @@ class GeoChatAdapter(BaseModelAdapter):
                 result={"error": f"Failed to parse GeoChat response: {exc}"},
                 error_message=str(exc),
             )
-            
+
         # Optional: Parse Bounding Boxes and Annotate Image
         artifacts = []
         result_payload = {
             "text": response.text,
             "model": response.model,
             "version": response.version,
+            "is_cdvqa": response.is_cdvqa,
         }
-        
+
         # Check if the text contains coordinate patterns [ymin, xmin, ymax, xmax]
         if "[" in response.text and "]" in response.text:
             from app.models.geochat.parser import annotate_image
-            
-            # Resolve asset URI
+
+            # Resolve asset URI — for change-VQA use the first ("before") asset
             state = arguments.get("_state")
-            asset_id = arguments.get("asset", "")
+            asset_ids = arguments.get("assets") or ([arguments["asset"]] if arguments.get("asset") else [])
             asset_uri = ""
-            if state:
+            if state and asset_ids:
                 for a in state.input_assets:
-                    if a.asset_id == asset_id:
+                    if a.asset_id == asset_ids[0]:
                         asset_uri = a.uri
                         break
-                        
+
             if asset_uri:
                 annotated_uri = annotate_image(asset_uri, response.text)
                 if annotated_uri:
@@ -162,4 +178,3 @@ class GeoChatAdapter(BaseModelAdapter):
             artifacts=artifacts,
             confidence=None,  # GeoChat does not produce calibrated confidence
         )
-

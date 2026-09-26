@@ -23,6 +23,7 @@ class ActionType(str, Enum):
     RETRY = "RETRY"
     REPLAN = "REPLAN"
     REQUEST_INPUT = "REQUEST_INPUT"
+    CONVERSATIONAL = "CONVERSATIONAL"
     FINAL = "FINAL"
 
 

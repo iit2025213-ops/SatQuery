@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
+import httpx
 from typing import Any
 
-from app.models.client import RemoteModelClient
-from app.models.terramind.schema import TerraMindResponse
+from app.models.client import (
+    RemoteModelClient, 
+    EndpointNotConfiguredError, 
+    ModelTimeoutError, 
+    ModelConnectionError, 
+    ModelAuthError, 
+    ModelResponseError
+)
 
 
 class TerraMindClient(RemoteModelClient):
@@ -19,28 +26,56 @@ class TerraMindClient(RemoteModelClient):
             timeout_seconds=timeout_seconds,
         )
 
-    def _build_request(
-        self, payload: dict[str, Any]
-    ) -> tuple[str, dict[str, str], dict[str, Any]]:
-        url = f"{self.endpoint}/v1/analyze"
-        headers: dict[str, str] = {"Content-Type": "application/json"}
+    async def infer(self, payload: dict[str, Any]) -> dict[str, Any]:
+        if not self.endpoint:
+            raise EndpointNotConfiguredError(self.model_name)
+
+        operation = payload.get("operation")
+        headers = {}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
-        body = {
-            "assets": payload.get("assets", []),
-            "task": payload.get("task", "segmentation"),
-            "num_classes": payload.get("num_classes", 3),
-            "clustering_method": payload.get("clustering_method", "pca_kmeans")
-        }
-        return url, headers, body
+        async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+            try:
+                if operation == "terramind_coordinate_tokenizer":
+                    url = f"{self.endpoint}/v1/coords/encode-decode"
+                    response = await client.post(url, json={"coords": payload["coords"]}, headers=headers)
+                else:
+                    if operation == "terramind_embedding":
+                        url = f"{self.endpoint}/v1/file/embedding"
+                    elif operation == "terramind_tim":
+                        url = f"{self.endpoint}/v1/file/tim"
+                    elif operation == "terramind_generate":
+                        url = f"{self.endpoint}/v1/file/generate"
+                    else:
+                        raise ValueError(f"Unknown TerraMind operation: {operation}")
 
-    def _parse_response(self, raw: dict[str, Any]) -> dict[str, Any]:
-        response = TerraMindResponse(
-            result=raw.get("result", raw),
-            model=raw.get("model", "terramind_v1_large"),
-            version=raw.get("version", "1.0"),
-            inference_time_seconds=raw.get("inference_time_seconds"),
-            confidence=raw.get("confidence")
-        )
-        return response.model_dump()
+                    data = payload["data"]
+                    file_path = payload["file_path"]
+
+                    if file_path.startswith("http"):
+                        img_resp = await client.get(file_path)
+                        img_resp.raise_for_status()
+                        raw_bytes = img_resp.content
+                        files = {"file": ("image.png", raw_bytes, "application/octet-stream")}
+                        response = await client.post(url, data=data, files=files, headers=headers)
+                    else:
+                        with open(file_path, "rb") as f:
+                            files = {"file": (file_path, f, "application/octet-stream")}
+                            response = await client.post(url, data=data, files=files, headers=headers)
+
+            except httpx.TimeoutException:
+                raise ModelTimeoutError(self.model_name, self.timeout_seconds)
+            except (httpx.ConnectError, httpx.RequestError) as exc:
+                raise ModelConnectionError(self.model_name, str(exc))
+
+        if response.status_code in (401, 403):
+            raise ModelAuthError(self.model_name)
+        if response.status_code >= 400:
+            detail = response.text[:500] if response.text else ""
+            raise ModelResponseError(self.model_name, response.status_code, detail)
+
+        try:
+            return response.json()
+        except Exception:
+            raise ModelResponseError(self.model_name, response.status_code, "Response body is not valid JSON.")

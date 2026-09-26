@@ -26,8 +26,15 @@ class TerraMindAdapter(BaseModelAdapter):
     """Adapter for IBM TerraMind multimodal foundation model."""
 
     def validate_input(self, arguments: dict[str, Any]) -> tuple[bool, str]:
-        if "asset_uri" not in arguments and "assets" not in arguments:
-            return False, "TerraMind requires an 'asset_uri' or 'assets' list."
+        cap = arguments.get("_capability", "")
+        if cap == "terramind_coordinate_tokenizer":
+            if "coords" not in arguments:
+                return False, "TerraMind coordinate tokenizer requires 'coords' list of [lon, lat]."
+            return True, ""
+        
+        # Checking either 'asset_uri', 'assets', or 'asset' (common for agent capabilities)
+        if "asset_uri" not in arguments and "assets" not in arguments and "asset" not in arguments:
+            return False, "TerraMind requires an 'asset' or 'assets' parameter pointing to the image."
         return True, ""
 
     async def predict(self, arguments: dict[str, Any]) -> dict[str, Any]:
@@ -38,65 +45,66 @@ class TerraMindAdapter(BaseModelAdapter):
             timeout_seconds=settings.terramind_timeout_seconds,
         )
 
-        assets = []
-        if "assets" in arguments:
-            assets = arguments["assets"]
-        elif "asset_uri" in arguments:
-            assets.append({
-                "uri": arguments["asset_uri"],
-                "modality": arguments.get("modality", "S2L2A")
-            })
+        cap = arguments.get("_capability", "")
+        
+        if cap == "terramind_coordinate_tokenizer":
+            payload = {
+                "operation": cap,
+                "coords": arguments.get("coords")
+            }
+        else:
+            asset_uri = ""
+            
+            # Resolve asset_id from arguments
+            asset_id = arguments.get("asset")
+            if not asset_id and "assets" in arguments and len(arguments["assets"]) > 0:
+                 asset_id = arguments["assets"][0]
 
-        payload = {
-            "assets": assets,
-            "task": arguments.get("task", "segmentation"),
-            "num_classes": int(arguments.get("num_classes", 3)),
-            "clustering_method": arguments.get("clustering_method", "pca_kmeans"),
-        }
+            # If arguments came from agent state input_assets, let's resolve it.
+            if "_state" in arguments and asset_id:
+                state = arguments["_state"]
+                for a in state.input_assets:
+                    if a.asset_id == asset_id:
+                        asset_uri = a.uri
+                        break
+
+            # Fallback if directly passing asset_uri
+            if not asset_uri and "asset_uri" in arguments:
+                asset_uri = arguments["asset_uri"]
+
+            if not asset_uri:
+                 return {"_error": f"Could not resolve asset '{asset_id}'.", "_error_type": "ValueError", "_retryable": False}
+
+            modality = arguments.get("modality", "S2L2A")
+            data = {"modality": modality}
+
+            if cap == "terramind_embedding":
+                data["merge_method"] = arguments.get("merge_method", "mean")
+                if "band_indices" in arguments:
+                    data["band_indices"] = arguments["band_indices"]
+            elif cap == "terramind_tim":
+                data["tim_modalities"] = arguments.get("tim_modalities", "LULC")
+                if "band_indices" in arguments:
+                    data["band_indices"] = arguments["band_indices"]
+            elif cap == "terramind_generate":
+                data["output_modalities"] = arguments.get("output_modalities", "S1GRD,LULC")
+                if "timesteps" in arguments:
+                    data["timesteps"] = str(arguments["timesteps"])
+                if "standardize" in arguments:
+                    data["standardize"] = bool(arguments["standardize"])
+                if "band_indices" in arguments:
+                    data["band_indices"] = arguments["band_indices"]
+                if "include_png" in arguments:
+                    data["include_png"] = bool(arguments["include_png"])
+
+            payload = {
+                "operation": cap,
+                "file_path": asset_uri,
+                "data": data,
+            }
 
         try:
             res = await client.infer(payload)
-            
-            # Post-process the mask to make it visible!
-            result_data = res.get("result", {})
-            mask_b64 = result_data.get("mask_base64")
-            if mask_b64:
-                import base64
-                import io
-                import numpy as np
-                from PIL import Image
-
-                try:
-                    # Decode the black image
-                    img_data = base64.b64decode(mask_b64)
-                    img = Image.open(io.BytesIO(img_data))
-                    arr = np.array(img)
-                    
-                    # Create a colorful palette for up to 10 clusters
-                    palette = np.array([
-                        [255, 99, 71],   # Tomato Red
-                        [60, 179, 113],  # Medium Sea Green
-                        [30, 144, 255],  # Dodger Blue
-                        [255, 215, 0],   # Gold
-                        [138, 43, 226],  # Blue Violet
-                        [255, 140, 0],   # Dark Orange
-                        [0, 206, 209],   # Dark Turquoise
-                        [255, 105, 180], # Hot Pink
-                        [139, 69, 19],   # Saddle Brown
-                        [112, 128, 144], # Slate Gray
-                    ], dtype=np.uint8)
-                    
-                    # Map cluster IDs to colors
-                    color_arr = palette[arr % len(palette)]
-                    
-                    # Encode back to Base64
-                    color_img = Image.fromarray(color_arr)
-                    buf = io.BytesIO()
-                    color_img.save(buf, format="PNG")
-                    res["result"]["mask_base64"] = base64.b64encode(buf.getvalue()).decode("utf-8")
-                except Exception as e:
-                    logger.warning(f"Failed to colorize TerraMind mask: {e}")
-
             return res
         except RemoteModelError as exc:
             return {
@@ -104,11 +112,17 @@ class TerraMindAdapter(BaseModelAdapter):
                 "_error_type": type(exc).__name__,
                 "_retryable": exc.retryable,
             }
+        except Exception as exc:
+            return {
+                "_error": str(exc),
+                "_error_type": type(exc).__name__,
+                "_retryable": False,
+            }
 
     def normalize_output(
         self, raw: dict[str, Any], arguments: dict[str, Any]
     ) -> Observation:
-        cap = arguments.get("_capability", "perform_multimodal_analysis")
+        cap = arguments.get("_capability", "")
 
         if "_error" in raw:
             return Observation(
@@ -122,16 +136,35 @@ class TerraMindAdapter(BaseModelAdapter):
                 },
                 error_message=raw["_error"],
             )
+            
+        evidence_type = EvidenceType.MULTIMODAL
+        
+        # Check if there are generated PNGs
+        if cap == "terramind_generate" and "outputs" in raw:
+            for mod, data in raw["outputs"].items():
+                if "png_base64" in data:
+                    evidence_type = EvidenceType.IMAGE_PROCESSING
+                    break
+        
+        # Remove massive raw tensors to avoid agent memory bloat, unless specifically needed
+        result_clean = raw.copy()
+        if "outputs" in result_clean:
+             for k, v in result_clean["outputs"].items():
+                  if isinstance(v, dict) and "data_b64_npy" in v:
+                       del v["data_b64_npy"]
+        if "data_b64_npy" in result_clean:
+             del result_clean["data_b64_npy"]
+        if "final_layer_b64_npy" in result_clean:
+             del result_clean["final_layer_b64_npy"]
 
         return Observation(
             source=EvidenceSource(
                 capability=cap,
-                model=raw.get("model", "TerraMind"),
-                version=raw.get("version", ""),
+                model="TerraMind",
+                version="large_v1",
                 backend="remote",
             ),
-            type=EvidenceType.IMAGE_BASE64 if "mask_base64" in raw.get("result", {}) else EvidenceType.METADATA,
+            type=evidence_type,
             status=ObservationStatus.SUCCESS,
-            result=raw.get("result", raw),
-            confidence=raw.get("confidence"),
+            result=result_clean,
         )
