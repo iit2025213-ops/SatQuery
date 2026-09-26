@@ -704,13 +704,36 @@ class OpenAIProvider(LLMProvider):
         try:
             from PIL import Image
         except ImportError:
-            logger.warning(
-                "Pillow not installed; cannot attach imagery to LLM calls."
-            )
+            logger.warning("Pillow not installed; cannot attach imagery to LLM calls.")
             return None
 
         lower = uri.lower()
         try:
+            # Handle HTTP/Cloudinary URLs
+            if uri.startswith("http"):
+                import httpx as _httpx
+                with _httpx.Client(timeout=30) as _client:
+                    resp = _client.get(uri)
+                    resp.raise_for_status()
+                    raw = resp.content
+                
+                # Assume standard image formats for HTTP unless it looks like tiff
+                if "tif" not in lower:
+                    mime = "image/jpeg" if "jpg" in lower or "jpeg" in lower else "image/png"
+                    return raw, mime
+                else:
+                    # It's a TIFF from URL, load it into PIL
+                    import io
+                    import numpy as np
+                    img = Image.open(io.BytesIO(raw))
+                    arr = np.array(img)
+                    arr = cls._normalize_band_array(arr)
+                    out_img = Image.fromarray(arr).convert("RGB")
+                    buf = io.BytesIO()
+                    out_img.save(buf, format="PNG")
+                    return buf.getvalue(), "image/png"
+
+            # Handle Local Files
             if lower.endswith((".png", ".jpg", ".jpeg")):
                 with open(uri, "rb") as f:
                     raw = f.read()
@@ -721,10 +744,7 @@ class OpenAIProvider(LLMProvider):
                 try:
                     import numpy as np
                 except ImportError:
-                    logger.warning(
-                        "numpy not installed; cannot normalize GeoTIFF %s "
-                        "for LLM vision.", uri,
-                    )
+                    logger.warning("numpy not installed; cannot normalize GeoTIFF for LLM vision.")
                     return None
 
                 img = Image.open(uri)
@@ -735,8 +755,7 @@ class OpenAIProvider(LLMProvider):
                 out_img.save(buf, format="PNG")
                 return buf.getvalue(), "image/png"
 
-            # Unsupported extension for vision attachment (e.g. unknown
-            # format) — skip silently, same as before.
+            # Unsupported extension
             return None
 
         except Exception as exc:
@@ -762,16 +781,17 @@ class OpenAIProvider(LLMProvider):
         image_uris = []
         for asset in context.get("input_assets", []):
             uri = asset.get("uri")
-            if uri and os.path.exists(uri):
-                image_uris.append(uri)
+            if uri:
+                if uri.startswith("http") or os.path.exists(uri):
+                    image_uris.append(uri)
 
         # Extract images from observation artifacts
         for obs in context.get("observations", []):
-            # context is serialized as dict, so obs is a dict
             if "artifacts" in obs and obs["artifacts"]:
                 for uri in obs["artifacts"]:
-                    if uri and isinstance(uri, str) and os.path.exists(uri) and uri not in image_uris:
-                        image_uris.append(uri)
+                    if uri and isinstance(uri, str):
+                        if (uri.startswith("http") or os.path.exists(uri)) and uri not in image_uris:
+                            image_uris.append(uri)
 
         for uri in image_uris:
             loaded = cls._load_image_bytes_for_llm(uri)
