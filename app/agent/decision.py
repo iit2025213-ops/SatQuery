@@ -62,6 +62,10 @@ class Decision(BaseModel):
 
     @model_validator(mode="after")
     def _validate_action_fields(self) -> "Decision":
+        # Auto-correct Gemini/LLM schema drift:
+        if self.action == ActionType.CALL_CAPABILITY and not self.capability and self.final_answer:
+            self.action = ActionType.CONVERSATIONAL
+
         if self.action == ActionType.CALL_CAPABILITY and not self.capability:
             raise ValueError("CALL_CAPABILITY requires a non-empty 'capability'")
         if self.action == ActionType.RETRY and not self.capability:
@@ -70,6 +74,8 @@ class Decision(BaseModel):
             raise ValueError("PARALLEL requires at least one entry in 'parallel_capabilities'")
         if self.action == ActionType.FINAL and not self.final_answer:
             raise ValueError("FINAL requires a non-empty 'final_answer'")
+        if self.action == ActionType.CONVERSATIONAL and not self.final_answer and not self.reason:
+            raise ValueError("CONVERSATIONAL requires 'final_answer' or 'reason'")
         return self
 
 

@@ -47,8 +47,8 @@ class GeoChatClient(RemoteModelClient):
             if uri.startswith("http"):
                 try:
                     import httpx as _httpx
-                    async with _httpx.AsyncClient(timeout=30) as _client:
-                        resp = await _client.get(uri)
+                    with _httpx.Client(timeout=30) as _client:
+                        resp = _client.get(uri)
                         resp.raise_for_status()
                         raw_bytes = resp.content
                         b64 = base64.b64encode(raw_bytes).decode("utf-8")
