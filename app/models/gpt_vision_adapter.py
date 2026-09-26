@@ -66,22 +66,36 @@ class GPTVisionAdapter(BaseModelAdapter):
                         asset_uri = a.uri
                         break
 
-        if not asset_uri or not os.path.exists(asset_uri):
-            return {
-                "_error": f"Asset URI not found or invalid: {asset_uri}",
-                "_error_type": "AssetNotFound",
-                "_retryable": False,
-            }
+        if asset_uri and asset_uri.startswith("http"):
+            import httpx
+            try:
+                async with httpx.AsyncClient() as http_client:
+                    resp = await http_client.get(asset_uri)
+                    resp.raise_for_status()
+                    b64 = base64.b64encode(resp.content).decode("utf-8")
+            except Exception as e:
+                return {
+                    "_error": f"Failed to download image from {asset_uri}: {e}",
+                    "_error_type": "DownloadError",
+                    "_retryable": False,
+                }
+        else:
+            if not asset_uri or not os.path.exists(asset_uri):
+                return {
+                    "_error": f"Asset URI not found or invalid: {asset_uri}",
+                    "_error_type": "AssetNotFound",
+                    "_retryable": False,
+                }
 
-        try:
-            with open(asset_uri, "rb") as f:
-                b64 = base64.b64encode(f.read()).decode("utf-8")
-        except Exception as e:
-            return {
-                "_error": f"Failed to read image: {e}",
-                "_error_type": "FileReadError",
-                "_retryable": False,
-            }
+            try:
+                with open(asset_uri, "rb") as f:
+                    b64 = base64.b64encode(f.read()).decode("utf-8")
+            except Exception as e:
+                return {
+                    "_error": f"Failed to read image: {e}",
+                    "_error_type": "FileReadError",
+                    "_retryable": False,
+                }
 
         prompt = ""
         cap = arguments.get("_capability", "")

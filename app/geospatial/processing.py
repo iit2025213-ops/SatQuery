@@ -39,7 +39,7 @@ def create_visual_preview(input_uri: str, output_uri: str | None = None) -> dict
     if rasterio is None or np is None:
         return {"error": "rasterio or numpy not installed"}
 
-    if not os.path.exists(input_uri) and not input_uri.startswith("mock://"):
+    if not os.path.exists(input_uri) and not input_uri.startswith("mock://") and not input_uri.startswith("http"):
         return {"error": f"Input file not found: {input_uri}"}
         
     if input_uri.startswith("mock://"):
