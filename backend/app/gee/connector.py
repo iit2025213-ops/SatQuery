@@ -737,7 +737,20 @@ class GEEConnector:
             if scene_ids:
                 try:
                     # Create an ImageCollection from ONLY the explicitly selected best scenes
-                    images = [ee.Image(sid) for sid in scene_ids]
+                    images = []
+                    for sid in scene_ids:
+                        if "COPERNICUS" in sid or "S2" in sid:
+                            date = ee.Image(sid).date()
+                            start = date.advance(-15, 'day')
+                            end = date.advance(15, 'day')
+                            comp = (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+                                    .filterBounds(aoi_geom)
+                                    .filterDate(start, end)
+                                    .median())
+                            images.append(comp)
+                        else:
+                            images.append(ee.Image(sid))
+                    
                     collection = ee.ImageCollection(images).select(['B4', 'B3', 'B2'])
                     
                     def apply_scaling(image):
@@ -771,7 +784,20 @@ class GEEConnector:
         ee = _get_ee()
         try:
             aoi_geom = self.geojson_to_ee_geometry(aoi_geojson)
-            images = [ee.Image(sid) for sid in scene_ids]
+            images = []
+            for sid in scene_ids:
+                if "COPERNICUS" in sid or "S2" in sid:
+                    date = ee.Image(sid).date()
+                    start = date.advance(-15, 'day')
+                    end = date.advance(15, 'day')
+                    comp = (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+                            .filterBounds(aoi_geom)
+                            .filterDate(start, end)
+                            .median())
+                    images.append(comp)
+                else:
+                    images.append(ee.Image(sid))
+                    
             collection = ee.ImageCollection(images).select(['B4', 'B3', 'B2'])
 
             def apply_scaling(image):
