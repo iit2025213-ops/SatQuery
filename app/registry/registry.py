@@ -71,19 +71,32 @@ class CapabilityRegistry:
 # ------------------------------------------------------------------
 
 def build_default_registry() -> CapabilityRegistry:
-    """Build a registry pre-loaded with all built-in mock adapters."""
+    """Build the production registry.
+
+    Active specialist models (4 total):
+      1. GeoChat          — VQA, scene interpretation, change-VQA
+      2. GPT-4 Vision     — Grounding (bounding boxes) + captioning
+      3. Change Detection — Bi-temporal pixel-level change mask (U-Net)
+      4. TerraMind        — Foundation model: NDVI, LULC, SAR, DEM,
+                            embeddings, coordinate tokenization,
+                            SAR analysis and multispectral analysis.
+
+    Prithvi and SARMAE have been retired. All their use-cases are
+    covered by TerraMind's cross-modal generation capabilities.
+    """
     from app.models.geochat.adapter import GeoChatAdapter
     from app.models.change_detection.adapter import ChangeDetectionAdapter
-    from app.models.prithvi.adapter import PrithviAdapter
-    from app.models.sarmae.adapter import SARMAEAdapter
     from app.models.terramind.adapter import TerraMindAdapter
+    from app.models.gpt_vision_adapter import GPTVisionAdapter
     from app.geospatial.validation import ValidationAdapter
     from app.geospatial.processing import VisualPreviewAdapter
     from app.tools.area import AreaCalculationAdapter
 
     registry = CapabilityRegistry()
 
-    # Validation capabilities — use the validation adapter
+    # ------------------------------------------------------------------
+    # Validation (lightweight, no specialist model)
+    # ------------------------------------------------------------------
     for cap_name in (
         "validate_remote_sensing_input",
         "validate_temporal_pair",
@@ -91,12 +104,14 @@ def build_default_registry() -> CapabilityRegistry:
     ):
         registry.register(BUILTIN_CAPABILITIES[cap_name], ValidationAdapter)
 
-    # Retrieval
+    # Retrieval (stub)
     registry.register(
         BUILTIN_CAPABILITIES["retrieve_satellite_imagery"], ValidationAdapter
     )
 
-    # GeoChat capabilities
+    # ------------------------------------------------------------------
+    # GeoChat — VQA + scene interpretation + change-VQA
+    # ------------------------------------------------------------------
     for cap_name in (
         "answer_remote_sensing_vqa",
         "interpret_scene",
@@ -104,39 +119,42 @@ def build_default_registry() -> CapabilityRegistry:
     ):
         registry.register(BUILTIN_CAPABILITIES[cap_name], GeoChatAdapter)
 
-    # GPT Vision capabilities
-    from app.models.gpt_vision_adapter import GPTVisionAdapter
+    # ------------------------------------------------------------------
+    # GPT-4 Vision — Grounding (bounding boxes) + captioning
+    # ------------------------------------------------------------------
     for cap_name in (
         "ground_region",
         "generate_caption",
     ):
         registry.register(BUILTIN_CAPABILITIES[cap_name], GPTVisionAdapter)
 
-    # ChangeDetection
+    # ------------------------------------------------------------------
+    # Change Detection — Bi-temporal U-Net pixel-level change mask
+    # ------------------------------------------------------------------
     registry.register(
         BUILTIN_CAPABILITIES["detect_bitemporal_change"], ChangeDetectionAdapter
     )
 
-    # Prithvi
-    registry.register(
-        BUILTIN_CAPABILITIES["analyze_multispectral_image"], PrithviAdapter
-    )
-
-    # SARMAE
-    registry.register(
-        BUILTIN_CAPABILITIES["analyze_sar_image"], SARMAEAdapter
-    )
-
-    # TerraMind
+    # ------------------------------------------------------------------
+    # TerraMind — Foundation model for ALL spectral / cross-modal work.
+    # Covers: NDVI, LULC, SAR synthesis (S1GRD), DEM, multispectral
+    # analysis, embeddings, and coordinate tokenisation.
+    # SAR queries (previously SARMAE) and multispectral queries
+    # (previously Prithvi) are now fully handled by TerraMind.
+    # ------------------------------------------------------------------
     for cap_name in (
         "terramind_embedding",
         "terramind_tim",
         "terramind_generate",
         "terramind_coordinate_tokenizer",
+        "analyze_sar_image",           # was SARMAE — now TerraMind
+        "analyze_multispectral_image",  # was Prithvi — now TerraMind
     ):
         registry.register(BUILTIN_CAPABILITIES[cap_name], TerraMindAdapter)
 
-    # Geospatial tools
+    # ------------------------------------------------------------------
+    # Geospatial deterministic tools
+    # ------------------------------------------------------------------
     registry.register(
         BUILTIN_CAPABILITIES["create_visual_preview"], VisualPreviewAdapter
     )
