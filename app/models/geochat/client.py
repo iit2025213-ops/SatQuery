@@ -51,11 +51,39 @@ class GeoChatClient(RemoteModelClient):
                         resp = _client.get(uri)
                         resp.raise_for_status()
                         raw_bytes = resp.content
-                        b64 = base64.b64encode(raw_bytes).decode("utf-8")
-                        images.append(b64)
-                        continue
+
+                    # Auto-convert TIFF to PNG — GeoChat expects standard image formats
+                    try:
+                        from PIL import Image as _PILImage
+                        import io as _io
+                        _probe = _PILImage.open(_io.BytesIO(raw_bytes))
+                        if _probe.format in ("TIFF", "MPO") or any(
+                            ext in uri.lower() for ext in (".tif", ".tiff")
+                        ):
+                            import numpy as np
+                            arr = np.array(_probe)
+                            if arr.dtype != np.uint8:
+                                arr = arr.astype("float32")
+                                lo = float(np.percentile(arr, 2))
+                                hi = float(np.percentile(arr, 98))
+                                if hi <= lo:
+                                    hi = lo + 1.0
+                                arr = ((arr - lo) / (hi - lo) * 255.0).clip(0, 255).astype("uint8")
+                            if arr.ndim == 3 and arr.shape[-1] > 3:
+                                arr = arr[..., :3]
+                            out_img = _PILImage.fromarray(arr).convert("RGB")
+                            buf = _io.BytesIO()
+                            out_img.save(buf, format="PNG")
+                            raw_bytes = buf.getvalue()
+                    except Exception:
+                        pass  # Non-fatal: send raw bytes as-is
+
+                    b64 = base64.b64encode(raw_bytes).decode("utf-8")
+                    images.append(b64)
+                    continue
                 except Exception:
                     continue
+
 
             # Local file fallback
             if not os.path.exists(uri):
