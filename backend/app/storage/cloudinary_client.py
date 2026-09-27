@@ -40,7 +40,10 @@ class CloudinaryClient:
                 resource_type = "raw"
                 format_override = "json"
             else:
-                resource_type = "auto"
+                if str(file_path).lower().endswith(('.tif', '.tiff')):
+                    resource_type = "raw"
+                else:
+                    resource_type = "auto"
                 format_override = None
             
             # Upload file
