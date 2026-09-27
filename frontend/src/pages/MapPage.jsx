@@ -1,10 +1,11 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import AOIMap from '../components/AOIMap';
 import TimelinePlayer from '../components/TimelinePlayer';
 import ChatMessage from '../components/ChatMessage';
 import AnalysisStatus from '../components/AnalysisStatus';
-import { apiPost, apiUpload, apiGet } from '../utils/api';
+import { apiPost, apiUpload, apiGet, apiPut } from '../utils/api';
+import UserMessage from '../components/UserMessage';
 
 // ── Geo-Agent Status Badge ────────────────────────────────────────
 function AgentStatusBadge({ loading, messages, errorState, compact }) {
@@ -14,22 +15,21 @@ function AgentStatusBadge({ loading, messages, errorState, compact }) {
   else if (messages.some(m => m.role === 'assistant' && !m.isTyping)) state = 'complete';
 
   const config = {
-    ready:     { color: '#6b7280', dot: '#4b5563', label: compact ? 'Ready' : 'Ready' },
-    analysing: { color: '#3b82f6', dot: '#60a5fa', label: compact ? 'Analysing' : 'Analysing...', pulse: true },
-    complete:  { color: '#22c55e', dot: '#22c55e', label: compact ? 'Complete' : 'Analysis Complete' },
-    error:     { color: '#ef4444', dot: '#ef4444', label: compact ? 'Error' : 'Analysis Error' },
+    ready:     { dot: '#333', label: 'Ready' },
+    analysing: { dot: '#555', label: 'Analysing', pulse: true },
+    complete:  { dot: '#3A3A3A', label: 'Complete' },
+    error:     { dot: '#4A2020', label: 'Error' },
   };
   const c = config[state];
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
       <div style={{
-        width: '6px', height: '6px', borderRadius: '50%',
+        width: '5px', height: '5px', borderRadius: '50%',
         background: c.dot,
-        boxShadow: c.pulse ? `0 0 6px ${c.dot}` : 'none',
-        animation: c.pulse ? 'satPulse 1.4s ease-in-out infinite' : 'none',
+        animation: c.pulse ? 'satPulse 1.6s ease-in-out infinite' : 'none',
       }} />
-      <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', color: c.color }}>
+      <span style={{ fontSize: '11px', color: '#333', letterSpacing: '0.03em' }}>
         {c.label}
       </span>
     </div>
@@ -200,131 +200,14 @@ function GeoAgentTyping() {
   );
 }
 
-// ── Composer Input ───────────────────────────────────────────────
-function Composer({ inputText, setInputText, handleSend, loading, aoi, requireAoi,
-  isListening, toggleListening, handleAttachClick, uploading, attachedAssets, removeAsset, uploadError,
-  analysisMode, setAnalysisMode, placeholder, compact }) {
-
-  const canSend = inputText.trim() && (!requireAoi || aoi);
-
-  return (
-    <div style={{
-      background: 'rgba(8,9,18,0.96)',
-      backdropFilter: 'blur(20px)',
-      border: '1px solid rgba(255,255,255,0.07)',
-      borderRadius: compact ? '10px' : '14px',
-      padding: compact ? '10px 12px' : '12px 16px',
-      display: 'flex', flexDirection: 'column', gap: '8px',
-    }}>
-      {/* Analysis mode toggle — neutral grey, no blue */}
-      <div style={{ display: 'flex', gap: '2px', background: 'rgba(255,255,255,0.05)', borderRadius: '7px', padding: '3px', width: 'fit-content' }}>
-        {['spatial', 'temporal'].map(m => (
-          <button key={m} type="button" onClick={() => setAnalysisMode(m)} style={{
-            background: analysisMode === m ? 'rgba(255,255,255,0.1)' : 'transparent',
-            color: analysisMode === m ? '#f1f5f9' : 'rgba(255,255,255,0.35)',
-            border: 'none',
-            padding: '4px 12px', borderRadius: '5px',
-            fontSize: '10px', fontWeight: 600, cursor: 'pointer',
-            textTransform: 'uppercase', letterSpacing: '0.08em',
-            transition: 'all 0.15s',
-          }}>{m}</button>
-        ))}
-      </div>
-
-      {/* Attached assets */}
-      {attachedAssets?.length > 0 && (
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {attachedAssets.map(a => (
-            <div key={a.asset_id} style={{
-              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '8px', padding: '5px 10px',
-              display: 'flex', alignItems: 'center', gap: '6px',
-            }}>
-              <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)' }}>{a.name}</span>
-              <button onClick={() => removeAsset(a.asset_id)} style={{
-                background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)',
-                cursor: 'pointer', fontSize: '12px', padding: '0', lineHeight: 1,
-              }}>×</button>
-            </div>
-          ))}
-        </div>
-      )}
-      {uploadError && <div style={{ color: '#ef4444', fontSize: '11px' }}>{uploadError}</div>}
-
-      {/* Input row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <button type="button" onClick={handleAttachClick} disabled={uploading} style={{
-          background: 'none', border: 'none', color: 'rgba(255,255,255,0.25)',
-          cursor: 'pointer', padding: '4px', flexShrink: 0, display: 'flex',
-          transition: 'color 0.15s',
-        }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ width: '16px', height: '16px' }}>
-            <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-          </svg>
-        </button>
-
-        <div style={{ flex: 1, position: 'relative' }}>
-          {!inputText && (
-            <span style={{
-              position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
-              fontSize: '13px', color: 'rgba(255,255,255,0.22)', pointerEvents: 'none',
-            }}>
-              {placeholder || (aoi ? 'Ask about this region...' : 'Draw a region first...')}
-            </span>
-          )}
-          <textarea
-            className="focus:outline-none focus:ring-0"
-            value={inputText}
-            onChange={e => setInputText(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-            disabled={loading}
-            rows={1}
-            style={{
-              width: '100%', background: 'transparent', border: 'none', outline: 'none', boxShadow: 'none',
-              resize: 'none', color: '#f1f5f9', fontSize: '13px', fontFamily: 'inherit',
-              lineHeight: '1.5', overflowY: 'hidden', padding: '4px 0',
-            }}
-          />
-        </div>
-
-        <button type="button" onClick={toggleListening} style={{
-          background: isListening ? 'rgba(59,130,246,0.15)' : 'none',
-          border: isListening ? '1px solid rgba(59,130,246,0.3)' : '1px solid transparent',
-          borderRadius: '6px', color: isListening ? '#60a5fa' : 'rgba(255,255,255,0.25)',
-          cursor: 'pointer', padding: '5px', flexShrink: 0, display: 'flex',
-          transition: 'all 0.15s',
-        }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ width: '15px', height: '15px' }}>
-            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-            <line x1="12" y1="19" x2="12" y2="23" />
-            <line x1="8" y1="23" x2="16" y2="23" />
-          </svg>
-        </button>
-
-        <button type="button" onClick={() => handleSend()} disabled={loading || !canSend} style={{
-          width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0,
-          background: canSend ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)',
-          border: canSend ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(255,255,255,0.06)',
-          color: canSend ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.2)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: canSend ? 'pointer' : 'not-allowed',
-          transition: 'all 0.2s',
-        }}>
-          <svg viewBox="0 0 12 14" fill="none" style={{ width: '12px', height: '12px', marginLeft: '1px' }}>
-            <path d="M6 13V1M6 1L1.5 5.5M6 1l4.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // ════════════════════════════════════════════════════════════════
 // MapPage — Main Export
 // ════════════════════════════════════════════════════════════════
 export default function MapPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const urlJobId = new URLSearchParams(location.search).get('jobId');
 
   // Map state
   const [aoi, setAoi] = useState(null);
@@ -403,6 +286,70 @@ export default function MapPage() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Sync messages
+  useEffect(() => {
+    if (jobId && messages.length > 0) {
+      const cleanMessages = messages.filter(m => !m.isTyping && !m.isError);
+      apiPut(`/jobs/${jobId}/messages`, { messages: cleanMessages }).catch(console.error);
+    }
+  }, [messages, jobId]);
+
+  // Restore job from URL
+  useEffect(() => {
+    if (urlJobId) {
+      setJobId(urlJobId);
+      loadJob(urlJobId);
+    } else {
+      setJobId(null);
+      setMessages([]);
+      setAoi(null);
+      setChatOpen(false);
+      setTimelineData(null);
+      setCurrentTimelineFrame(null);
+    }
+  }, [urlJobId]);
+
+  async function loadJob(id) {
+    try {
+      const data = await apiGet(`/jobs/${id}`);
+      if (data) {
+        if (data.aoi) setAoi(data.aoi);
+        setChatOpen(true);
+        if (data.options && data.options.messages && Array.isArray(data.options.messages)) {
+          setMessages(data.options.messages.filter(m => m != null).map(m => ({
+            ...m,
+            timestamp: m.timestamp ? new Date(m.timestamp) : new Date()
+          })));
+        } else {
+          setMessages([
+            { role: 'user', text: data.query, timestamp: new Date(data.created_at) },
+            { 
+              role: 'assistant', 
+              text: data.final_answer || 'Analysis in progress...', 
+              timestamp: new Date(data.updated_at || data.created_at) 
+            }
+          ]);
+        }
+        
+        // Also fetch timeline if temporal mode is indicated
+        if (data.options?.analysis_mode === 'temporal' || data.query?.toLowerCase().includes('timeline')) {
+          setAnalysisMode('temporal');
+          try {
+            const timelineResult = await apiPost('/timeline', { aoi: data.aoi, job_id: id });
+            if (timelineResult?.data) {
+              setTimelineData(timelineResult.data);
+              if (timelineResult.data.frames?.length > 0) setCurrentTimelineFrame(timelineResult.data.frames[0]);
+            }
+          } catch (e) {
+            console.error('Failed to load timeline on restore', e);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to restore job', e);
+    }
+  }
+
   // Job status polling
   useEffect(() => {
     if (!jobId) return;
@@ -436,9 +383,11 @@ export default function MapPage() {
       const uploaded = [];
       for (const file of files) {
         const fd = new FormData();
-        fd.append('file', file); fd.append('modality', 'document');
+        fd.append('file', file); 
+        const isImg = file.type.startsWith('image/');
+        fd.append('modality', isImg ? 'RGB' : 'document');
         const result = await apiUpload('/assets', fd);
-        uploaded.push({ name: file.name, asset_id: result.asset_id });
+        uploaded.push({ name: file.name, asset_id: result.asset_id, file_url: result.file_url });
       }
       setAttachedAssets(prev => [...prev, ...uploaded]);
     } catch (err) { setUploadError(err.message); }
@@ -475,10 +424,10 @@ export default function MapPage() {
     setLoading(true);
     setLastQuery(text.trim());
 
-    const userMsg = { role: 'user', text: text.trim(), timestamp: new Date() };
+    const currentAssets = [...attachedAssets];
+    const userMsg = { role: 'user', text: text.trim(), attachedAssets: currentAssets, timestamp: new Date() };
     setMessages(prev => [...prev, userMsg]);
     setInputText('');
-    const currentAssets = [...attachedAssets];
     setAttachedAssets([]);
     setChatOpen(true);
     setMessages(prev => [...prev, { role: 'assistant', text: '', isTyping: true, timestamp: new Date() }]);
@@ -499,7 +448,7 @@ export default function MapPage() {
     try {
       let activeJobId = jobId;
 
-      if (!skipJobCreation) {
+      if (!activeJobId && !skipJobCreation) {
         const result = await apiPost('/queries', {
           query: text.trim(),
           asset_ids: currentAssets.map(a => a.asset_id),
@@ -599,32 +548,22 @@ export default function MapPage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         @keyframes satPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
-        @keyframes satBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
         @keyframes spin { to{transform:rotate(360deg)} }
-        .geo-panel-scroll::-webkit-scrollbar { width: 3px; }
+        @keyframes dotPulse { 0%,80%,100%{opacity:0} 40%{opacity:1} }
+        .geo-panel-scroll::-webkit-scrollbar { width: 4px; }
         .geo-panel-scroll::-webkit-scrollbar-track { background: transparent; }
-        .geo-panel-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
-        .geo-panel-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+        .geo-panel-scroll::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
         .sat-nav-btn { transition: all 0.15s; }
-        .sat-nav-btn:hover { background: rgba(255,255,255,0.06) !important; color: rgba(255,255,255,0.8) !important; }
-        .draw-new-btn:hover { border-color: rgba(59,130,246,0.4) !important; color: #93c5fd !important; background: rgba(59,130,246,0.06) !important; }
-        .send-chip-btn:hover { opacity: 0.8 !important; }
+        .sat-nav-btn:hover { background: rgba(255,255,255,0.05) !important; }
+        .draw-new-btn:hover { color: #ddd !important; }
+        .send-chip-btn:hover { color: #888 !important; }
         /* Container query context for evidence grid */
         .chat-panel-content { container-type: inline-size; container-name: chatpanel; }
-        /* Evidence grid: 2-col when panel is wide, 1-col when narrow */
-        .evidence-grid {
-          display: grid;
-          gap: 8px;
-          grid-template-columns: 1fr;
-          width: 100%;
-          min-width: 0;
-        }
-        @container chatpanel (min-width: 500px) {
-          .evidence-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        }
-        @container chatpanel (min-width: 720px) {
-          .evidence-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-        }
+        .evidence-grid { display: grid; gap: 8px; grid-template-columns: 1fr; width: 100%; min-width: 0; }
+        @container chatpanel (min-width: 500px) { .evidence-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @container chatpanel (min-width: 720px) { .evidence-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+        /* Hover-reveal action bar */
+        .msg-wrapper:hover .msg-action-bar { opacity: 1 !important; }
       `}</style>
 
       {/* Hidden file input */}
@@ -684,7 +623,8 @@ export default function MapPage() {
       </nav>
 
       {/* ── Workspace Body ─────────────────────────────────────────── */}
-      <div className="geo-grid-bg workspace-body" style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
+        {/* Workspace body */}
+        <div className="workspace-body" style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative', background: '#04050d' }}>
 
         {/* ── Map Canvas ─────────────────────────────────────────── */}
         <div style={{ flex: 1, position: 'relative', transition: 'all 0.35s ease' }}>
@@ -739,13 +679,30 @@ export default function MapPage() {
                   </div>
                 </div>
               )}
-              <Composer
-                inputText={inputText} setInputText={setInputText}
-                handleSend={handleSend} loading={loading} aoi={aoi} requireAoi
+              <ChatComposer
+                queryText={inputText} setQueryText={setInputText}
+                onSubmit={handleSend} submitting={loading}
                 isListening={isListening} toggleListening={toggleListening}
                 handleAttachClick={handleAttachClick} uploading={uploading}
                 attachedAssets={attachedAssets} removeAsset={removeAsset} uploadError={uploadError}
-                analysisMode={analysisMode} setAnalysisMode={setAnalysisMode}
+                fileInputRef={fileInputRef} handleFileChange={handleFileChange}
+                placeholder="Ask anything about Earth..."
+                hasMessages={false}
+                topContent={
+                  <div style={{ display: 'flex', gap: '2px', background: '#161616', borderRadius: '6px', padding: '2px', width: 'fit-content' }}>
+                    {['spatial', 'temporal'].map(m => (
+                      <button key={m} type="button" onClick={() => setAnalysisMode(m)} style={{
+                        background: analysisMode === m ? '#222' : 'transparent',
+                        color: analysisMode === m ? '#DDD' : '#555',
+                        border: 'none',
+                        padding: '4px 12px', borderRadius: '4px',
+                        fontSize: '10px', fontWeight: 500, cursor: 'pointer',
+                        textTransform: 'uppercase', letterSpacing: '0.07em',
+                        transition: 'all 0.15s',
+                      }}>{m}</button>
+                    ))}
+                  </div>
+                }
               />
             </div>
           )}
@@ -778,11 +735,12 @@ export default function MapPage() {
             }}
           >
             <div style={{
-              width: isResizing ? '2px' : '1px',
+              width: '10px',
               height: '100%',
-              background: isResizing ? '#3b82f6' : 'rgba(255,255,255,0.08)',
-              transition: 'background 0.15s, width 0.15s'
-            }} className="group-hover:bg-[#60a5fa] group-hover:w-[2px] group-focus:bg-[#60a5fa] group-focus:w-[2px]" />
+              background: isResizing ? '#333' : '#1A1A1A',
+              transition: 'background 0.15s',
+              cursor: 'col-resize',
+            }} />
           </div>
         )}
 
@@ -795,58 +753,49 @@ export default function MapPage() {
           flexShrink: 0,
           transition: isResizing ? 'none' : 'width 0.38s cubic-bezier(0.4, 0, 0.2, 1)',
           display: 'flex', flexDirection: 'column',
-          background: 'rgba(5, 6, 15, 0.98)',
+          background: '#0B0B0B',
         }}>
 
-          {/* Panel Header — matches reference */}
+          {/* Panel Header */}
           <div style={{
-            padding: '12px 16px 10px',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            padding: '14px 20px 12px',
+            borderBottom: '1px solid #181818',
             flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: 'rgba(6,8,18,0.6)',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{
-                width: '28px', height: '28px', borderRadius: '6px',
-                background: 'rgba(29,78,216,0.18)',
-                border: '1px solid rgba(59,130,246,0.18)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '13px', flexShrink: 0,
-              }}>🛰</div>
-              <div>
-                <div style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', color: '#f1f5f9', textTransform: 'uppercase' }}>
-                  GEO-AGENT
-                </div>
-                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '1px', letterSpacing: '0.02em' }}>Satellite Intelligence</div>
-              </div>
-            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: '#888', letterSpacing: '0.04em' }}>Geo-Agent</span>
+              <span style={{ fontSize: '11px', color: '#2A2A2A' }}>·</span>
               <AgentStatusBadge loading={loading} messages={messages} errorState={!!errorMsg} compact />
-              <button
-                onClick={() => setChatOpen(false)}
-                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.2)', cursor: 'pointer', padding: '2px', display: 'flex', fontSize: '16px', lineHeight: 1 }}
-                title="Close panel"
-              >···</button>
             </div>
+            <button
+              onClick={() => setChatOpen(false)}
+              style={{ background: 'none', border: 'none', color: '#333', cursor: 'pointer', padding: '4px', display: 'flex', fontSize: '14px', lineHeight: 1, transition: 'color 0.15s' }}
+              onMouseOver={e => e.currentTarget.style.color = '#666'}
+              onMouseOut={e => e.currentTarget.style.color = '#333'}
+              title="Close panel"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ width: '14px', height: '14px' }}>
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
           </div>
 
-          {/* Messages area — container query context for evidence grid */}
+          {/* Messages area */}
           <div className="geo-panel-scroll chat-panel-content" style={{
             flex: 1, overflowY: 'auto', overflowX: 'hidden',
-            padding: '14px 16px',
-            display: 'flex', flexDirection: 'column', gap: '14px',
+            padding: '32px 28px',
+            display: 'flex', flexDirection: 'column', gap: '0',
             minWidth: 0,
           }}>
             {messages.length === 0 && (
               <div style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center',
-                justifyContent: 'center', height: '100%', gap: '12px',
-                color: 'rgba(255,255,255,0.2)', textAlign: 'center',
+                display: 'flex', flexDirection: 'column',
+                justifyContent: 'flex-end', height: '100%',
+                paddingBottom: '8px',
               }}>
-                <div style={{ fontSize: '28px', opacity: 0.4 }}>🛰</div>
-                <div style={{ fontSize: '12px', lineHeight: '1.6', maxWidth: '200px' }}>
-                  Ask a geospatial question to begin your analysis
+                <div style={{ fontSize: '13px', color: '#2A2A2A', lineHeight: '1.8' }}>
+                  Draw a region on the map, then ask a question about it.
                 </div>
               </div>
             )}
@@ -854,64 +803,64 @@ export default function MapPage() {
             {messages.map((msg, i) => {
               if (msg.isTyping) {
                 return (
-                  <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                    <div style={{
-                      width: '22px', height: '22px', borderRadius: '5px', flexShrink: 0,
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '11px', marginTop: '1px',
-                    }}>🛰</div>
-                    <div style={{ flex: 1, minWidth: 0, marginTop: '2px' }}>
-                      <AnalysisStatus />
-                    </div>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '32px' }}>
+                    <span style={{ fontSize: '14px', color: '#555' }}>Analysing your selected area</span>
+                    <span style={{ display: 'inline-flex', gap: '3px' }}>
+                      {[0, 1, 2].map(d => (
+                        <span key={d} style={{
+                          width: '4px', height: '4px', borderRadius: '50%', background: '#444',
+                          display: 'inline-block',
+                          animation: 'dotPulse 1.4s ease-in-out infinite',
+                          animationDelay: `${d * 0.2}s`,
+                        }} />
+                      ))}
+                    </span>
                   </div>
                 );
               }
 
               if (msg.isError || msg.text?.startsWith('❌')) {
+                const errText = (msg.text || '').replace(/^❌\s*/, '');
                 return (
-                  <AnalysisErrorCard
-                    key={i}
-                    errorText={msg.text}
-                    onRetry={handleRetry}
-                  />
+                  <div key={i} style={{ marginBottom: '32px' }}>
+                    <div style={{ fontSize: '15px', color: '#888', marginBottom: '8px' }}>Analysis could not be completed.</div>
+                    {errText && <div style={{ fontSize: '13px', color: '#555', lineHeight: '1.6', marginBottom: '14px' }}>{errText}</div>}
+                    <button onClick={handleRetry} style={{
+                      background: 'none', border: '1px solid #2A2A2A', borderRadius: '8px',
+                      padding: '6px 14px', fontSize: '13px', color: '#666', cursor: 'pointer',
+                      transition: 'all 0.15s',
+                    }}
+                      onMouseOver={e => { e.currentTarget.style.borderColor = '#444'; e.currentTarget.style.color = '#999'; }}
+                      onMouseOut={e => { e.currentTarget.style.borderColor = '#2A2A2A'; e.currentTarget.style.color = '#666'; }}
+                    >Retry</button>
+                  </div>
                 );
               }
 
               if (msg.role === 'user') {
                 return (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', alignItems: 'flex-start' }}>
-                    <div style={{
-                      maxWidth: '78%',
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.09)',
-                      borderRadius: '12px 12px 3px 12px',
-                      padding: '9px 13px',
-                      fontSize: '13px', color: '#e2e8f0',
-                      lineHeight: '1.6',
-                      whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                    }}>
-                      {msg.text}
-                      {msg.timestamp && (
-                        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)', marginTop: '5px', textAlign: 'right' }}>
-                          {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <UserMessage
+                    key={i}
+                    text={msg.text}
+                    timestamp={msg.timestamp}
+                    attachedAssets={msg.attachedAssets}
+                    onEdit={(text) => {
+                      setInputText(text);
+                    }}
+                  />
                 );
               }
 
               // Assistant message
               return (
-                <ChatMessage
-                  key={i}
-                  msg={msg}
-                  jobId={msg.jobId || jobId}
-                  analysisId={msg.analysisId}
-                  onTimelineFrame={setCurrentTimelineFrame}
-                />
+                <div key={i} style={{ marginBottom: '40px' }}>
+                  <ChatMessage
+                    msg={msg}
+                    jobId={msg.jobId || jobId}
+                    analysisId={msg.analysisId}
+                    onTimelineFrame={setCurrentTimelineFrame}
+                  />
+                </div>
               );
             })}
 
@@ -923,37 +872,52 @@ export default function MapPage() {
             <div ref={chatEndRef} />
           </div>
 
-          {/* ── Panel Footer: Composer + Controls ────────────────── */}
+          {/* Panel Footer: Composer */}
           <div style={{
-            padding: '10px 14px 14px',
-            borderTop: '1px solid rgba(255,255,255,0.05)',
+            padding: '0 20px 20px',
             flexShrink: 0,
-            display: 'flex', flexDirection: 'column', gap: '8px',
+            display: 'flex', flexDirection: 'column', gap: '10px',
           }}>
-            <Composer
-              inputText={inputText} setInputText={setInputText}
-              handleSend={handleSend} loading={loading} aoi={aoi} requireAoi={false}
+            <ChatComposer
+              queryText={inputText} setQueryText={setInputText}
+              onSubmit={handleSend} submitting={loading}
               isListening={isListening} toggleListening={toggleListening}
               handleAttachClick={handleAttachClick} uploading={uploading}
-              attachedAssets={[]} removeAsset={removeAsset} uploadError={uploadError}
-              analysisMode={analysisMode} setAnalysisMode={setAnalysisMode}
-              placeholder="Ask a follow-up..." compact
+              attachedAssets={attachedAssets} removeAsset={removeAsset} uploadError={uploadError}
+              fileInputRef={fileInputRef} handleFileChange={handleFileChange}
+              placeholder="Ask a follow-up..."
+              compact={true}
+              hasMessages={true}
+              topContent={
+                <div style={{ display: 'flex', gap: '2px', background: '#161616', borderRadius: '6px', padding: '2px', width: 'fit-content' }}>
+                  {['spatial', 'temporal'].map(m => (
+                    <button key={m} type="button" onClick={() => setAnalysisMode(m)} style={{
+                      background: analysisMode === m ? '#222' : 'transparent',
+                      color: analysisMode === m ? '#DDD' : '#555',
+                      border: 'none',
+                      padding: '4px 12px', borderRadius: '4px',
+                      fontSize: '10px', fontWeight: 500, cursor: 'pointer',
+                      textTransform: 'uppercase', letterSpacing: '0.07em',
+                      transition: 'all 0.15s',
+                    }}>{m}</button>
+                  ))}
+                </div>
+              }
             />
 
             {/* Quick action chips */}
-            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               {['Temporal trend', 'Compare periods', 'Generate report'].map(chip => (
                 <button
                   key={chip}
                   className="send-chip-btn"
                   onClick={() => { setInputText(chip); }}
                   style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.07)',
-                    borderRadius: '6px', padding: '4px 9px',
-                    fontSize: '10px', color: 'rgba(255,255,255,0.35)',
-                    cursor: 'pointer', transition: 'all 0.15s',
-                    fontWeight: 500,
+                    background: 'none', border: 'none',
+                    fontSize: '12px', color: '#333',
+                    cursor: 'pointer', transition: 'color 0.15s',
+                    padding: '2px 0',
+                    fontWeight: 400,
                   }}
                 >
                   {chip}
@@ -963,15 +927,14 @@ export default function MapPage() {
                 className="draw-new-btn"
                 onClick={handleDrawNew}
                 style={{
-                  background: 'transparent',
-                  border: '1px dashed rgba(255,255,255,0.1)',
-                  borderRadius: '6px', padding: '4px 9px',
-                  fontSize: '10px', color: 'rgba(255,255,255,0.25)',
-                  cursor: 'pointer', transition: 'all 0.15s',
+                  background: 'none', border: 'none',
+                  fontSize: '12px', color: '#2A2A2A',
+                  cursor: 'pointer', transition: 'color 0.15s',
+                  padding: '2px 0',
                   marginLeft: 'auto',
                 }}
               >
-                ✎ New region
+                New region
               </button>
             </div>
           </div>

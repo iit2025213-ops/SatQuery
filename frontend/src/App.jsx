@@ -8,12 +8,13 @@ import MyUploadsPage from './pages/MyUploadsPage';
 import HowItWorksPage from './pages/HowItWorksPage';
 import ArchitecturePage from './pages/ArchitecturePage';
 import CapabilitiesPage from './pages/CapabilitiesPage';
+import { BackgroundProvider } from './context/BackgroundContext';
 
 // Protected route — checks for the real access token
 const ProtectedRoute = ({ children }) => {
   const isAuthenticated =
     localStorage.getItem('satquery_access_token') !== null ||
-    localStorage.getItem('satquery_jwt_token') !== null; // fallback for existing sessions
+    localStorage.getItem('satquery_jwt_token') !== null;
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
@@ -23,31 +24,33 @@ const ProtectedRoute = ({ children }) => {
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/auth" element={<AuthPage />} />
-        <Route path="/how-it-works" element={<HowItWorksPage />} />
-        <Route path="/architecture" element={<ArchitecturePage />} />
-        <Route path="/capabilities" element={<CapabilitiesPage />} />
-        <Route
-          path="/dashboard"
-          element={<ProtectedRoute><DashboardPage /></ProtectedRoute>}
-        />
-        <Route
-          path="/analysis"
-          element={<ProtectedRoute><MapPage /></ProtectedRoute>}
-        />
-        <Route
-          path="/documents"
-          element={<ProtectedRoute><DocumentsPage /></ProtectedRoute>}
-        />
-        <Route
-          path="/uploads"
-          element={<ProtectedRoute><MyUploadsPage /></ProtectedRoute>}
-        />
-      </Routes>
-    </BrowserRouter>
+    <BackgroundProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/how-it-works" element={<HowItWorksPage />} />
+          <Route path="/architecture" element={<ArchitecturePage />} />
+          <Route path="/capabilities" element={<CapabilitiesPage />} />
+          <Route
+            path="/dashboard"
+            element={<ProtectedRoute><DashboardPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/analysis"
+            element={<ProtectedRoute><MapPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/documents"
+            element={<ProtectedRoute><DocumentsPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/uploads"
+            element={<ProtectedRoute><MyUploadsPage /></ProtectedRoute>}
+          />
+        </Routes>
+      </BrowserRouter>
+    </BackgroundProvider>
   );
 }
 

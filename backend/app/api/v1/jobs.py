@@ -1,6 +1,7 @@
 # app/api/v1/jobs.py
 
 from fastapi import APIRouter, HTTPException, status, Depends
+from pydantic import BaseModel
 from typing import Optional
 import logging
 
@@ -38,6 +39,8 @@ async def get_job_status(
             ),
             final_answer=job_data.get("final_answer"),
             confidence=job_data.get("confidence"),
+            aoi=job_data.get("aoi"),
+            options=job_data.get("options"),
             created_at=job_data["created_at"],
             updated_at=job_data["updated_at"]
         )
@@ -66,7 +69,7 @@ async def list_jobs(
         if status:
             query = query.eq("status", status)
 
-        jobs = query.order("created_at", desc=True).range(offset, offset + limit).execute()
+        jobs = query.order("updated_at", desc=True).range(offset, offset + limit).execute()
 
         return {
             "jobs": jobs.data,
@@ -140,3 +143,35 @@ async def get_job_evidence(
     except Exception as e:
         logger.error(f"Error getting evidence: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get evidence")
+
+
+class UpdateMessagesRequest(BaseModel):
+    messages: list
+
+@router.put("/jobs/{job_id}/messages")
+async def update_job_messages(
+    job_id: str,
+    request: UpdateMessagesRequest,
+    user_id: str = Depends(get_current_user_id)
+):
+    """Update conversation messages for a job"""
+    from app.main import supabase_client
+
+    try:
+        # Verify user owns job
+        job = supabase_client.get_user_client().table("jobs").select("user_id, options").eq("job_id", job_id).single().execute()
+        
+        if not job.data or job.data["user_id"] != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+        options = job.data.get("options") or {}
+        options["messages"] = request.messages
+
+        supabase_client.get_user_client().table("jobs").update({"options": options}).eq("job_id", job_id).execute()
+        return {"status": "success"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating messages: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update messages")

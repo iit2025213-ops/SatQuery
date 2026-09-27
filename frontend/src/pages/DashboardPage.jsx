@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import DashboardLayout from '../components/DashboardLayout';
-import { apiGet, apiPost, apiUpload } from '../utils/api';
+import { apiGet, apiPost, apiUpload, apiPut } from '../utils/api';
+import { useBackground } from '../context/BackgroundContext';
+import UserMessage from '../components/UserMessage';
+import ChatComposer from '../components/ChatComposer';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { setHasConversation } = useBackground();
 
   const [messages, setMessages] = useState([]);
   const hasMessages = messages.length > 0;
@@ -35,16 +39,71 @@ export default function DashboardPage() {
 
 
 
+  const location = useLocation();
+  const urlJobId = new URLSearchParams(location.search).get('jobId');
+  const [conversationId, setConversationId] = useState(null);
+
   useEffect(() => { 
     fetchJobs(); 
     fetchUser();
   }, []);
 
   useEffect(() => {
+    if (urlJobId) {
+      loadJob(urlJobId);
+    } else {
+      setConversationId(null);
+      setMessages([]);
+      setHasConversation(false);
+    }
+  }, [urlJobId]);
+
+  async function loadJob(id) {
+    try {
+      const data = await apiGet(`/jobs/${id}`);
+      if (data) {
+        setConversationId(data.job_id);
+        if (data.options && data.options.messages && Array.isArray(data.options.messages)) {
+          setMessages(data.options.messages.filter(m => m != null).map(m => ({
+            ...m,
+            timestamp: m.timestamp ? new Date(m.timestamp) : new Date()
+          })));
+        } else {
+          setMessages([
+            { role: 'user', text: data.query, timestamp: new Date(data.created_at) },
+            { 
+              role: 'assistant', 
+              text: data.final_answer || 'Analysis in progress or no final answer recorded.', 
+              timestamp: new Date(data.updated_at || data.created_at) 
+            }
+          ]);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load job", err);
+    }
+  }
+
+  // Signal background transition when first message arrives
+  useEffect(() => {
+    if (messages.length > 0) {
+      setHasConversation(true);
+    }
+  }, [messages.length, setHasConversation]);
+
+
+  useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
+
+  useEffect(() => {
+    if (conversationId && messages.length > 0) {
+      const cleanMessages = messages.filter(m => !m.isPolling && !m.isError && m.type !== 'job_status');
+      apiPut(`/jobs/${conversationId}/messages`, { messages: cleanMessages }).catch(console.error);
+    }
+  }, [messages, conversationId]);
 
   async function fetchUser() {
     try {
@@ -74,9 +133,10 @@ export default function DashboardPage() {
       for (const file of files) {
         const fd = new FormData();
         fd.append('file', file);
-        fd.append('modality', 'document');
+        const isImg = file.type.startsWith('image/');
+        fd.append('modality', isImg ? 'RGB' : 'document');
         const result = await apiUpload('/assets', fd);
-        uploaded.push({ name: file.name, asset_id: result.asset_id });
+        uploaded.push({ name: file.name, asset_id: result.asset_id, file_url: result.file_url });
       }
       setAttachedAssets(prev => [...prev, ...uploaded]);
     } catch (err) {
@@ -110,8 +170,10 @@ export default function DashboardPage() {
     
     const text = queryText.trim();
     
-    // Optimistic user message immediately transitions the UI
-    setMessages(prev => [...prev, { role: 'user', text, timestamp: new Date() }]);
+    const currentAssets = [...attachedAssets];
+    // 1. Show user message immediately
+    const userMsg = { role: 'user', text, attachedAssets: currentAssets, timestamp: new Date() };
+    setMessages(prev => [...prev, userMsg]);
     
     setSubmitting(true);
     setSubmitError('');
@@ -121,35 +183,99 @@ export default function DashboardPage() {
       textareaRef.current.style.overflowY = 'hidden';
     }
     
-    const currentAssets = [...attachedAssets];
     setAttachedAssets([]);
 
     try {
-      const res = await apiPost('/queries', {
+      // 2. Build conversation history from current messages + new user message
+      //    (setMessages above is async, so we build history manually)
+      const historyForBrain = [
+        ...messages
+          .filter(m => !m.isError && !m.isPolling && m.type !== 'job_status')
+          .map(m => ({ role: m.role, content: m.text || m.content || '' })),
+        { role: 'user', content: text },
+      ];
+
+      // 3. POST to our backend /api/v1/brain which returns { brain_job_id }
+      const res = await apiPost('/brain', {
+        conversation_id: conversationId,
         query: text,
+        messages: historyForBrain,
         asset_ids: currentAssets.map(a => a.asset_id),
       });
       
-      // Update assistant message with job id status
+      const brainJobId = res.brain_job_id;
+      if (!brainJobId) throw new Error("Did not receive a job ID from Brain.");
+      
+      if (!conversationId) setConversationId(brainJobId);
+
+      // Add polling message
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        type: 'job_status',
-        jobId: res.job_id || 'Queued',
-        text: 'Query submitted successfully', 
-        timestamp: new Date() 
+        text: 'Analyzing your query (this may take a few minutes)...',
+        isPolling: true,
+        jobId: brainJobId,
+        timestamp: new Date(),
       }]);
-      fetchJobs();
+
+      // 4. Poll until complete
+      let finalData = null;
+      while (true) {
+        await new Promise(r => setTimeout(r, 4000)); // poll every 4s
+        try {
+          const pollRes = await apiGet(`/brain/status/${brainJobId}`);
+          if (pollRes.status === 'complete') {
+            finalData = pollRes;
+            break;
+          } else if (pollRes.status === 'failed' || pollRes.status === 'error') {
+            throw new Error(pollRes.error || "Analysis failed.");
+          }
+          // else status is 'polling', continue...
+        } catch (pollErr) {
+           if (pollErr.status === 404) throw new Error("Brain job expired or not found.");
+           console.warn("Poll error, retrying...", pollErr);
+        }
+      }
+
+      // 5. Replace polling message with final response
+      setMessages(prev => {
+        const newMsgs = [...prev];
+        const lastIdx = newMsgs.map(m => m.jobId).lastIndexOf(brainJobId);
+        if (lastIdx !== -1) {
+          newMsgs[lastIdx] = { 
+            role: 'assistant', 
+            text: finalData.reply || 'No response from Brain.',
+            artifact_ids: finalData.artifact_ids || [],
+            confidence: finalData.confidence ?? null,
+            timestamp: new Date(),
+          };
+        } else {
+          // Fallback if the user navigated away and back?
+          newMsgs.push({
+            role: 'assistant', 
+            text: finalData.reply || 'No response from Brain.',
+            artifact_ids: finalData.artifact_ids || [],
+            confidence: finalData.confidence ?? null,
+            timestamp: new Date(),
+          });
+        }
+        return newMsgs;
+      });
+
+      fetchJobs(); // Refresh recent queries in sidebar
     } catch (err) {
-      setSubmitError(err.message);
+      const errorText = err.message || 'Something went wrong. Please try again.';
+      setSubmitError(errorText);
       setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        text: `Error: ${err.message}`, 
-        timestamp: new Date() 
+        role: 'assistant',
+        isError: true,
+        text: `⚠️ ${errorText}`, 
+        timestamp: new Date(),
       }]);
     } finally {
       setSubmitting(false);
     }
   }
+
 
   function toggleListening() {
     if (isListening) {
@@ -298,69 +424,122 @@ export default function DashboardPage() {
                         boxSizing: 'border-box'
                       }}
                     >
-                      {msg.role === 'assistant' && (
-                        <div style={{
-                          width: '28px', height: '28px', borderRadius: '50%',
-                          background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: '12px', flexShrink: 0, marginTop: '2px'
-                        }}>🛰</div>
-                      )}
+                      {/* No avatar — content leads */}
                       
                       {msg.role === 'user' ? (
-                        <div style={{
-                          width: 'fit-content',
-                          maxWidth: 'min(70%, 680px)',
-                          minWidth: 0,
-                          boxSizing: 'border-box',
-                          background: '#2F6FED',
-                          color: '#FFFFFF',
-                          padding: '12px 16px',
-                          borderRadius: '18px 18px 4px 18px',
-                          fontSize: '14px', lineHeight: '1.5',
-                          boxShadow: '0 4px 16px rgba(0,0,0,0.16)',
-                          display: 'flex', flexDirection: 'column'
-                        }}>
-                          <div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word', minWidth: 0 }}>{msg.text}</div>
-                          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)', marginTop: '4px', textAlign: 'right' }}>
-                            {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </div>
-                        </div>
+                        <UserMessage 
+                          text={msg.text}
+                          timestamp={msg.timestamp}
+                          attachedAssets={msg.attachedAssets}
+                          onEdit={(text) => {
+                            setQueryText(text);
+                            if (textareaRef.current) {
+                              textareaRef.current.focus();
+                            }
+                          }}
+                        />
                       ) : (
                         <div style={{
                           width: '100%',
-                          maxWidth: '82%',
+                          maxWidth: '100%',
                           minWidth: 0,
                           boxSizing: 'border-box',
-                          color: 'rgba(255,255,255,0.92)',
-                          padding: '4px 16px',
-                          fontSize: '14px', lineHeight: '1.6',
-                          display: 'flex', flexDirection: 'column'
+                          color: '#EDEDED',
+                          padding: '2px 0',
+                          fontSize: '16px', lineHeight: '1.72',
+                          display: 'flex', flexDirection: 'column',
+                          overflowWrap: 'anywhere', wordBreak: 'break-word',
                         }}>
-                          {msg.type === 'job_status' ? (
+                          {msg.isError ? (
+                            <div style={{ fontSize: '15px', color: '#888', lineHeight: '1.6' }}>
+                              {(msg.text || '').replace(/^⚠️\s*/, '')}
+                            </div>
+                          ) : msg.isPolling ? (
+                            <motion.div 
+                              animate={{ opacity: [0.5, 1, 0.5] }}
+                              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                              style={{ color: '#888', fontStyle: 'italic', fontSize: '15px' }}
+                            >
+                              {msg.text}
+                            </motion.div>
+                          ) : msg.type === 'job_status' ? (
                             <div>
-                              <div style={{ fontWeight: 500, fontSize: '15px', color: '#fff', marginBottom: '8px' }}>
-                                {msg.text}
-                              </div>
-                              <div style={{ color: 'rgba(255,255,255,0.7)', marginBottom: '12px' }}>
-                                Your analysis has been queued and is now being processed.
-                              </div>
-                              <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>
-                                Job ID
-                              </div>
-                              <div style={{ fontFamily: 'monospace', color: 'rgba(255,255,255,0.6)', background: 'rgba(255,255,255,0.05)', padding: '6px 10px', borderRadius: '6px', width: 'fit-content', marginBottom: '12px' }}>
-                                {msg.jobId}
-                              </div>
-                              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px' }}>
-                                Track progress from the Area of Interest tab.
-                              </div>
+                              <div style={{ fontWeight: 500, fontSize: '16px', color: '#DDD', marginBottom: '8px' }}>{msg.text}</div>
+                              <div style={{ color: '#777', marginBottom: '12px', fontSize: '15px' }}>Your query has been queued for processing.</div>
+                              <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#444', marginBottom: '4px' }}>Job ID</div>
+                              <div style={{ fontFamily: 'monospace', color: '#555', background: '#111', padding: '6px 10px', borderRadius: '6px', width: 'fit-content', marginBottom: '12px', fontSize: '13px' }}>{msg.jobId}</div>
+                              <div style={{ color: '#555', fontSize: '14px' }}>Track progress from the Area of Interest tab.</div>
                             </div>
                           ) : (
                             <div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word', minWidth: 0 }}>{msg.text}</div>
                           )}
-                          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)', marginTop: '6px', textAlign: 'left', whiteSpace: 'nowrap' }}>
-                            {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </div>
+
+                          {/* Artifacts — download buttons */}
+                          {msg.artifact_ids && msg.artifact_ids.length > 0 && (
+                            <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#333', marginBottom: '2px' }}>
+                                Generated Artifacts
+                              </div>
+                              {msg.artifact_ids.map((artifactPath, ai) => {
+                                const filename = artifactPath.split('/').pop() || `artifact_${ai + 1}`;
+                                const backendBase = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+                                const downloadUrl = (artifactPath.startsWith('http://') || artifactPath.startsWith('https://'))
+                                  ? artifactPath 
+                                  : `${backendBase}/api/v1/brain/artifacts/${encodeURIComponent(artifactPath)}`;
+                                const isImage = ['.png', '.jpg', '.jpeg', '.tif', '.tiff', '.webp', '.gif'].some(ext => filename.toLowerCase().endsWith(ext));
+                                return (
+                                  <div key={ai} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    {isImage ? (
+                                      <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
+                                        <img 
+                                          src={downloadUrl} 
+                                          alt={`AI Generated Mask - ${filename}`} 
+                                          style={{ maxWidth: '100%', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}
+                                        />
+                                      </a>
+                                    ) : (
+                                      <a
+                                        href={downloadUrl}
+                                        download={filename}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{
+                                          display: 'inline-flex', alignItems: 'center', gap: '8px',
+                                          background: '#111', border: '1px solid #222',
+                                          borderRadius: '8px', padding: '8px 14px',
+                                          color: '#888', fontSize: '13px',
+                                          textDecoration: 'none', width: 'fit-content',
+                                          transition: 'border-color 0.15s, color 0.15s',
+                                        }}
+                                        onMouseOver={e => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#BBB'; }}
+                                        onMouseOut={e => { e.currentTarget.style.borderColor = '#222'; e.currentTarget.style.color = '#888'; }}
+                                      >
+                                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: '13px', height: '13px', flexShrink: 0 }}>
+                                          <path d="M8 2v8M5 7l3 3 3-3" strokeLinecap="round" strokeLinejoin="round" />
+                                          <path d="M2 13h12" strokeLinecap="round" />
+                                        </svg>
+                                        {filename}
+                                      </a>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Confidence score */}
+                          {msg.confidence != null && (
+                            <div style={{ marginTop: '10px', fontSize: '11px', color: '#2A2A2A' }}>
+                              Confidence: {(msg.confidence * 100).toFixed(0)}%
+                            </div>
+                          )}
+                          {msg.timestamp && (
+                            <div style={{ fontSize: '10px', color: '#2A2A2A', marginTop: '8px', textAlign: 'left', whiteSpace: 'nowrap' }}>
+                              {typeof msg.timestamp.toLocaleTimeString === 'function'
+                                ? msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                : new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          )}
                         </div>
                       )}
                     </motion.div>
@@ -387,148 +566,24 @@ export default function DashboardPage() {
               zIndex: 10
             }}
           >
-            <motion.form 
-              layout
-              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              className="card chatbar-composer" 
-              onSubmit={handleSubmit} 
-              style={{ 
-                position: 'relative', 
-                width: '100%', 
-                maxWidth: hasMessages ? '900px' : '850px', 
-                borderRadius: hasMessages ? '24px' : '32px', 
-                height: 'auto', 
-                minHeight: attachedAssets.length > 0 ? '140px' : (hasMessages ? '64px' : '72px'), 
-                background: 'rgba(25, 25, 28, 0.88)', 
-                backdropFilter: 'blur(18px) saturate(120%)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                boxShadow: '0 8px 40px rgba(0,0,0,0.30)',
-                display: 'flex', flexDirection: 'column', 
-                justifyContent: 'flex-end', padding: '12px 16px', 
-              }}
-            >
-              
-              {/* Top area for attachments (if any) */}
-              {attachedAssets.length > 0 && (
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px', paddingLeft: '8px' }}>
-                  {attachedAssets.map(a => (
-                    <div key={a.asset_id} style={{
-                      width: '80px', height: '80px', background: '#282A2C', borderRadius: '16px',
-                      display: 'flex', flexDirection: 'column', padding: '10px', position: 'relative'
-                    }}>
-                      <span style={{ fontSize: '10px', fontWeight: 600, color: '#a1a1aa' }}>FILE</span>
-                      <span style={{ fontSize: '12px', color: '#fff', marginTop: 'auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
-                      <button type="button" onClick={() => removeAsset(a.asset_id)} style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '12px', lineHeight: 1 }}>×</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Bottom area: input row */}
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', width: '100%' }}>
-                <button type="button" aria-label="Attach file"
-                  onClick={handleAttachClick} disabled={uploading}
-                  style={{ 
-                    width: uploading ? '110px' : '40px', height: '40px', borderRadius: uploading ? '20px' : '50%', flexShrink: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                    background: uploading ? 'rgba(75, 150, 255, 0.1)' : 'transparent', border: 'none', color: uploading ? '#4B96FF' : 'rgba(255,255,255,0.7)',
-                    cursor: uploading ? 'not-allowed' : 'pointer', opacity: 1,
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    marginBottom: '2px'
-                  }}>
-                  {uploading ? (
-                    <>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }}>
-                        <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
-                      </svg>
-                      <span style={{ fontSize: '12px', fontWeight: 600 }}>Uploading...</span>
-                    </>
-                  ) : (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '24px', height: '24px' }}>
-                      <line x1="12" y1="5" x2="12" y2="19"></line>
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                  )}
-                </button>
-
-                <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', minWidth: 0, padding: '6px 0' }}>
-                  {queryText === '' && (
-                    <p className="ph" aria-hidden="true" style={{ position: 'absolute', left: '4px', top: '9px', fontSize: '16px', fontWeight: 400, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.01em', margin: 0, pointerEvents: 'none' }}>Ask anything about Earth...</p>
-                  )}
-                  <textarea
-                    ref={textareaRef}
-                    value={queryText}
-                    onChange={e => setQueryText(e.target.value)}
-                    onKeyDown={e => { 
-                      if (e.nativeEvent.isComposing) return;
-                      if (e.key === 'Enter' && !e.shiftKey) { 
-                        e.preventDefault(); 
-                        handleSubmit(e); 
-                      } 
-                    }}
-                    disabled={submitting}
-                    rows={1}
-                    style={{
-                      width: '100%',
-                      minWidth: 0,
-                      background: 'transparent', border: 'none', outline: 'none', boxShadow: 'none',
-                      resize: 'none', color: '#FFFFFF',
-                      fontSize: '16px', fontWeight: 400, fontFamily: 'inherit',
-                      lineHeight: '1.5', letterSpacing: '0.01em', overflowX: 'hidden',
-                      whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word',
-                      padding: '4px 4px', minHeight: '28px', maxHeight: '200px', boxSizing: 'border-box'
-                  }}
-                  aria-label="Query input"
-                />
-              </div>
-
-              <input ref={fileInputRef} type="file" multiple style={{ display: 'none' }} onChange={handleFileChange} accept="image/*,.pdf,.txt,.csv,.json,.geojson,.tif,.tiff" />
-              
-              <button type="button" aria-label="Toggle microphone" onClick={toggleListening} style={{ background: isListening ? 'rgba(75, 150, 255, 0.2)' : 'transparent', border: 'none', color: isListening ? '#4B96FF' : 'rgba(255,255,255,0.7)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px', borderRadius: '50%', transition: 'all 0.2s', marginBottom: '4px' }}>
-                {isListening ? (
-                  <div className="mic-wave-container">
-                    <div className="mic-wave-bar" style={{ animationDelay: '0.0s' }} />
-                    <div className="mic-wave-bar" style={{ animationDelay: '0.1s' }} />
-                    <div className="mic-wave-bar" style={{ animationDelay: '0.2s' }} />
-                    <div className="mic-wave-bar" style={{ animationDelay: '0.3s' }} />
-                  </div>
-                ) : (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px' }}>
-                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                    <line x1="12" y1="19" x2="12" y2="23"></line>
-                    <line x1="8" y1="23" x2="16" y2="23"></line>
-                  </svg>
-                )}
-              </button>
-              <button type="submit" className="send-btn" aria-label="Submit query"
-                disabled={submitting || !queryText.trim()}
-                style={{ 
-                  position: 'static', width: '38px', height: '38px', borderRadius: '50%', flexShrink: 0, 
-                  background: queryText.trim() ? '#E5E7EB' : 'rgba(255,255,255,0.1)', 
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                  border: 'none', cursor: 'pointer', transition: 'all 0.2s',
-                  transform: submitting ? 'scale(0.96)' : 'scale(1)',
-                  marginBottom: '3px'
-                }}
-                onMouseDown={e => e.currentTarget.style.transform = 'scale(0.96)'}
-                onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
-                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-              >
-                <svg className="arrow" viewBox="0 0 12 14" fill="none" style={{ width: '16px', height: '16px', marginLeft: queryText.trim() ? '2px' : 0 }}>
-                  <path d="M6 13V1M6 1L1.5 5.5M6 1l4.5 4.5" stroke={queryText.trim() ? '#111827' : 'rgba(255,255,255,0.5)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-            </div>
-
-            {/* Error messages */}
-            {(submitError || uploadError) && (
-              <div style={{
-                position: 'absolute', top: '-30px', left: 0, right: 0,
-                textAlign: 'center', fontSize: '13px', color: '#f87171',
-              }}>{submitError || uploadError}</div>
-            )}
-          </motion.form>
+            <ChatComposer 
+              queryText={queryText}
+              setQueryText={setQueryText}
+              onSubmit={handleSubmit}
+              submitting={submitting}
+              attachedAssets={attachedAssets}
+              removeAsset={removeAsset}
+              handleAttachClick={handleAttachClick}
+              uploading={uploading}
+              uploadError={uploadError}
+              isListening={isListening}
+              toggleListening={toggleListening}
+              fileInputRef={fileInputRef}
+              handleFileChange={handleFileChange}
+              textareaRef={textareaRef}
+              isDashboard={true}
+              hasMessages={hasMessages}
+            />
           </motion.div>
         </main>
       </div>

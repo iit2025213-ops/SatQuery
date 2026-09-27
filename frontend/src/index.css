@@ -24,14 +24,9 @@ html, body {
   animation: fadeSlideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
-/* ── Geo-Intelligence Grid Background ── */
+/* ── Geo-Intelligence Workspace Background ── */
 .geo-grid-bg {
   background-color: #04050d;
-  background-image: 
-    linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-  background-position: center center;
 }
 
 /* ── Custom Dark Scrollbar ── */
@@ -73,5 +68,16 @@ html, body {
   .floating-composer {
     width: 95% !important;
     bottom: 16px !important;
+  }
+}
+
+/* ── User Message Bubble ── */
+.user-message-bubble {
+  width: fit-content;
+  max-width: min(65%, 680px);
+}
+@media (max-width: 768px) {
+  .user-message-bubble {
+    max-width: 90%;
   }
 }

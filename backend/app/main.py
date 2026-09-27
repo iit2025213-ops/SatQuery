@@ -23,6 +23,7 @@ from app.api.v1.gee import router as gee_router
 from app.api.v1.terrain import router as terrain_router
 from app.api.v1.timeline import router as timeline_router
 from app.api.v1.chat import router as chat_router
+from app.api.v1.brain import router as brain_router
 from app.api.websocket.routes import router as ws_router
 
 # Initialize logger
@@ -128,6 +129,7 @@ app.include_router(gee_router)
 app.include_router(terrain_router)
 app.include_router(timeline_router)
 app.include_router(chat_router)
+app.include_router(brain_router)   # Dashboard → AI Brain proxy
 app.include_router(ws_router)
 
 # Add middleware

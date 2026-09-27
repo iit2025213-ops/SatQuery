@@ -1,9 +1,11 @@
 // Shared sidebar + background layout for all dashboard pages
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import '../styles/Dashboard.css';
 import dashboardBg from '../../../ChatGPT Image Sep 18, 2026, 10_02_53 PM.png';
 import { apiGet } from '../utils/api';
+import { useBackground } from '../context/BackgroundContext';
 
 function MenuButton({ icon, label, onClick, hasArrow }) {
   return (
@@ -37,6 +39,7 @@ let cachedSidebarCollapsed = false;
 export default function DashboardLayout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { hasConversation } = useBackground();
   
   const [sidebarCollapsed, setSidebarCollapsedState] = useState(cachedSidebarCollapsed);
   const [recentJobs, setRecentJobsState] = useState(cachedRecentJobs);
@@ -205,7 +208,10 @@ export default function DashboardLayout({ children }) {
                 <button
                   key={job.job_id}
                   className="sidebar-item"
-                  onClick={() => navigate('/documents')}
+                  onClick={() => {
+                    if (job.aoi) navigate(`/analysis?jobId=${job.job_id}`);
+                    else navigate(`/dashboard?jobId=${job.job_id}`);
+                  }}
                   title={job.query}
                   style={{ 
                     padding: '10px 12px', minHeight: 'auto', borderRadius: '8px',
@@ -221,7 +227,7 @@ export default function DashboardLayout({ children }) {
                       {job.query}
                     </span>
                     <span style={{ color: '#9ca3af', fontSize: '11px' }}>
-                      {relativeTime(job.created_at)}
+                      {relativeTime(job.updated_at || job.created_at)}
                     </span>
                   </div>
                 </button>
@@ -354,9 +360,44 @@ export default function DashboardLayout({ children }) {
         </div>
       </aside>
 
-      {/* Persistent background */}
-      <img className="stage-image" src={dashboardBg} alt="" aria-hidden="true" />
-      <div className="stage-overlay"></div>
+      {/* Persistent background — galaxy fades to plain black once conversation starts */}
+
+      {/* Layer 0: plain conversation background (fades IN when hasConversation) */}
+      <motion.div
+        aria-hidden="true"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: hasConversation ? 1 : 0 }}
+        transition={{ duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
+        style={{
+          position: 'absolute', inset: 0,
+          background: '#050505',
+          zIndex: 0,
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Layer 1: galaxy image (fades OUT when hasConversation) */}
+      <motion.img
+        className="stage-image"
+        src={dashboardBg}
+        alt=""
+        aria-hidden="true"
+        initial={{ opacity: 1, filter: 'blur(0px)' }}
+        animate={{
+          opacity: hasConversation ? 0 : 1,
+          filter: hasConversation ? 'blur(3px)' : 'blur(0px)',
+        }}
+        transition={{ duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
+      />
+
+      {/* Layer 2: dark scrim overlay (fades OUT with galaxy) */}
+      <motion.div
+        className="stage-overlay"
+        aria-hidden="true"
+        initial={{ opacity: 1 }}
+        animate={{ opacity: hasConversation ? 0 : 1 }}
+        transition={{ duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
+      />
 
       {/* Page content injected here */}
       <div style={{ 

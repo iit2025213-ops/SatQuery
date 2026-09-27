@@ -60,6 +60,8 @@ class JobStatusResponse(BaseModel):
     progress: JobProgress
     final_answer: Optional[str] = None
     confidence: Optional[float] = None
+    aoi: Optional[dict] = None
+    options: Optional[dict] = None
     created_at: datetime
     updated_at: datetime
 

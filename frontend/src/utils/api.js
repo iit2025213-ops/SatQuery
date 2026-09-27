@@ -56,6 +56,15 @@ export async function apiPost(path, body) {
   return handleResponse(res);
 }
 
+export async function apiPut(path, body) {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(body),
+  });
+  return handleResponse(res);
+}
+
 export async function apiUpload(path, formData) {
   const token = localStorage.getItem('satquery_access_token');
   const headers = {};
