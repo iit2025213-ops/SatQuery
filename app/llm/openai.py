@@ -66,6 +66,7 @@ _DECISION_JSON_SCHEMA: dict[str, Any] = {
                 "RETRY",
                 "REPLAN",
                 "REQUEST_INPUT",
+                "CONVERSATIONAL",
                 "FINAL",
             ],
         },
@@ -150,8 +151,8 @@ class OpenAIProvider(LLMProvider):
         base_url: str = "",
         temperature: float = 0.1,
         max_retries: int = 2,
-        max_tokens_decide: int = 800,
-        max_tokens_synthesize: int = 1200,
+        max_tokens_decide: int = 2000,
+        max_tokens_synthesize: int = 2000,
     ) -> None:
         self._api_key = api_key
         self._model = model
@@ -595,7 +596,7 @@ class OpenAIProvider(LLMProvider):
             "  * S1GRD -- Synthetic Aperture Radar. Use for structures, buildings, vessels, cloud-obscured areas.\n"
             "  * LULC -- Land Use / Land Cover. Use for terrain classification (urban, forest, water, agricultural).\n"
             "  * NDVI -- Normalized Difference Vegetation Index. Use for vegetation health, deforestation. "
-            "NOTE: NDVI requires multispectral bands. For plain RGB PNG images, use terramind_tim with LULC instead.\n"
+            "TerraMind CAN generate NDVI from ANY image including plain RGB PNG -- no multispectral bands required. Use terramind_generate with modality=RGB and output_modalities=NDVI and include_png=true.\n"
             "  * DEM -- Digital Elevation Model. Use when elevation or topography is relevant.\n\n"
 
             "### 3e. GPT-4 Vision (Grounding + Captioning)\n"
@@ -675,9 +676,14 @@ class OpenAIProvider(LLMProvider):
             "\n\n## 8. EXECUTION DIRECTIVES\n"
             "- Zero Hallucination Tolerance: NEVER fabricate outputs, scores, or metadata.\n"
             "- Deterministic Math: Always route numerical calculations to deterministic tools.\n"
-            "- Sequential vs Parallel: Sequence dependent tasks. Parallelize independent ones.\n"
+            "- PARALLEL IS MANDATORY for multi-task queries: When user asks for 2+ independent things "
+            "(e.g. NDVI AND grounding, LULC AND caption), use ONE PARALLEL action -- NOT sequential steps.\n"
+            "  PARALLEL example for NDVI+grounding: parallel_capabilities_json = "
+            '[{\"capability\":\"terramind_generate\",\"arguments\":{\"asset\":\"<id>\",\"modality\":\"RGB\",\"output_modalities\":\"NDVI\",\"include_png\":true}},'  "
+            '{\"capability\":\"ground_region\",\"arguments\":{\"asset\":\"<id>\"}}]'\n"
+            "- Sequential ONLY when step B requires output from step A.\n"
             "- Modality Constraints: Never call optical-only capabilities on SAR data.\n"
-            "- Asset References: Always reference asset IDs from input_assets."
+            "- Asset References: Always reference the exact asset_id from input_assets."
         )
 
         return "".join(prompt_parts)
