@@ -603,7 +603,10 @@ class OpenAIProvider(LLMProvider):
             "  * DEM   -- Digital Elevation Model. Topography and elevation.\n"
             "- ARTIFACT GENERATION IS THE ANSWER: TerraMind returns generated image URLs, NOT text. "
             "Once TerraMind generates the requested NDVI/SAR/LULC artifact, DO NOT loop trying to find a text analysis. "
-            "Consider the task complete, return ActionType.FINAL, and reference the generated artifact.\n\n"
+            "Consider the task complete, return ActionType.FINAL, and reference the generated artifact.\n"
+            "- ERROR RECOVERY: If TerraMind throws an error like 'requires exactly 2 channels', it means your "
+            "input 'modality' is wrong for the uploaded image. DO NOT try to hallucinate 'band_indices'. Instead, "
+            "retry the capability but change the 'modality' argument to 'RGB' or 'S2L2A'.\n\n"
 
             "### 3c. GPT-4 Vision (Object Grounding + Captioning)\n"
             "- Capability Names: ground_region, generate_caption\n"
