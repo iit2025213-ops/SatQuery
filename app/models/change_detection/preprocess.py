@@ -55,7 +55,7 @@ def _read_with_rasterio(data: bytes):
     return Image.fromarray(arr)
 
 
-def to_rgb8_png(data: bytes) -> bytes:
+def to_rgb8_png(data: bytes, max_side: int = MAX_SIDE) -> bytes:
     """Return the image as 8-bit RGB PNG (or the original bytes if they already are PNG/JPG RGB).
 
     Raises ImagePreparationError with a readable message if that is not possible.
@@ -99,9 +99,9 @@ def to_rgb8_png(data: bytes) -> bytes:
             raise ImagePreparationError(f"Could not read the image: {exc}")
         passthrough = False
 
-    if max(rgb.size) > MAX_SIDE:
+    if max(rgb.size) > max_side:
         raise ImagePreparationError(
-            f"Image is {rgb.size[0]}x{rgb.size[1]} px; the model accepts at most {MAX_SIDE} px per side. "
+            f"Image is {rgb.size[0]}x{rgb.size[1]} px; the model accepts at most {max_side} px per side. "
             "Crop or tile the area upstream."
         )
     return data if passthrough else _png_bytes(rgb)

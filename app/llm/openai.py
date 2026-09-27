@@ -733,21 +733,16 @@ class OpenAIProvider(LLMProvider):
                     resp.raise_for_status()
                     raw = resp.content
                 
-                # Assume standard image formats for HTTP unless it looks like tiff
-                if "tif" not in lower:
+                # Fast path for known web formats
+                if not any(ext in lower for ext in (".tif", ".tiff")):
                     mime = "image/jpeg" if "jpg" in lower or "jpeg" in lower else "image/png"
                     return raw, mime
                 else:
-                    # It's a TIFF from URL, load it into PIL
-                    import io
-                    import numpy as np
-                    img = Image.open(io.BytesIO(raw))
-                    arr = np.array(img)
-                    arr = cls._normalize_band_array(arr)
-                    out_img = Image.fromarray(arr).convert("RGB")
-                    buf = io.BytesIO()
-                    out_img.save(buf, format="PNG")
-                    return buf.getvalue(), "image/png"
+                    # Robust TIFF conversion
+                    from app.models.change_detection.preprocess import to_rgb8_png
+                    # The OpenAI Vision API allows up to 2048px; limit TIFF scaling there
+                    png_bytes = to_rgb8_png(raw, max_side=2048)
+                    return png_bytes, "image/png"
 
             # Handle Local Files
             if lower.endswith((".png", ".jpg", ".jpeg")):
@@ -757,19 +752,11 @@ class OpenAIProvider(LLMProvider):
                 return raw, mime
 
             if lower.endswith((".tif", ".tiff")):
-                try:
-                    import numpy as np
-                except ImportError:
-                    logger.warning("numpy not installed; cannot normalize GeoTIFF for LLM vision.")
-                    return None
-
-                img = Image.open(uri)
-                arr = np.array(img)
-                arr = cls._normalize_band_array(arr)
-                out_img = Image.fromarray(arr).convert("RGB")
-                buf = io.BytesIO()
-                out_img.save(buf, format="PNG")
-                return buf.getvalue(), "image/png"
+                with open(uri, "rb") as f:
+                    raw = f.read()
+                from app.models.change_detection.preprocess import to_rgb8_png
+                png_bytes = to_rgb8_png(raw, max_side=2048)
+                return png_bytes, "image/png"
 
             # Unsupported extension
             return None

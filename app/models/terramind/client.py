@@ -57,7 +57,15 @@ class TerraMindClient(RemoteModelClient):
                         img_resp = await client.get(file_path)
                         img_resp.raise_for_status()
                         raw_bytes = img_resp.content
-                        files = {"file": ("image.png", raw_bytes, "application/octet-stream")}
+                        
+                        import os
+                        from urllib.parse import urlparse
+                        parsed_url = urlparse(file_path)
+                        filename = os.path.basename(parsed_url.path)
+                        if not filename:
+                            filename = "image.png"
+
+                        files = {"file": (filename, raw_bytes, "application/octet-stream")}
                         response = await client.post(url, data=data, files=files, headers=headers)
                     else:
                         with open(file_path, "rb") as f:
