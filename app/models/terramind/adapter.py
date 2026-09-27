@@ -109,7 +109,9 @@ class TerraMindAdapter(BaseModelAdapter):
             elif cap == "terramind_tim":
                 data["tim_modalities"] = arguments.get("tim_modalities", "LULC")
                 if "band_indices" in arguments:
-                    data["band_indices"] = arguments["band_indices"]
+                    import json
+                    val = arguments["band_indices"]
+                    data["band_indices"] = json.dumps(val) if isinstance(val, list) else str(val)
             elif cap == "terramind_generate":
                 data["output_modalities"] = arguments.get("output_modalities", "S1GRD")
                 if "timesteps" in arguments:
@@ -117,9 +119,11 @@ class TerraMindAdapter(BaseModelAdapter):
                 if "standardize" in arguments:
                     data["standardize"] = bool(arguments["standardize"])
                 if "band_indices" in arguments:
-                    data["band_indices"] = arguments["band_indices"]
+                    import json
+                    val = arguments["band_indices"]
+                    data["band_indices"] = json.dumps(val) if isinstance(val, list) else str(val)
                 if "include_png" in arguments:
-                    data["include_png"] = bool(arguments["include_png"])
+                    data["include_png"] = str(bool(arguments["include_png"])).lower()
 
             payload = {
                 "operation": cap,
