@@ -46,7 +46,31 @@ class TerraMindAdapter(BaseModelAdapter):
         )
 
         cap = arguments.get("_capability", "")
-        
+
+        # ------------------------------------------------------------------
+        # Legacy capability mapping
+        # analyze_sar_image (was SARMAE) → terramind_generate with S1GRD output
+        # analyze_multispectral_image (was Prithvi) → terramind_tim with LULC
+        # ------------------------------------------------------------------
+        _legacy_map = {
+            "analyze_sar_image": ("terramind_generate", "S1GRD"),
+            "analyze_multispectral_image": ("terramind_tim", "LULC"),
+        }
+        if cap in _legacy_map:
+            tm_op, tm_output = _legacy_map[cap]
+            logger.info(
+                "Legacy capability '%s' remapped → %s (output: %s)",
+                cap, tm_op, tm_output,
+            )
+            cap = tm_op
+            # Inject defaults the LLM may have omitted
+            if tm_op == "terramind_generate":
+                arguments.setdefault("output_modalities", tm_output)
+                arguments.setdefault("include_png", True)
+            elif tm_op == "terramind_tim":
+                arguments.setdefault("tim_modalities", tm_output)
+            arguments.setdefault("modality", "RGB")
+
         if cap == "terramind_coordinate_tokenizer":
             payload = {
                 "operation": cap,
@@ -54,13 +78,13 @@ class TerraMindAdapter(BaseModelAdapter):
             }
         else:
             asset_uri = ""
-            
+
             # Resolve asset_id from arguments
             asset_id = arguments.get("asset")
             if not asset_id and "assets" in arguments and len(arguments["assets"]) > 0:
-                 asset_id = arguments["assets"][0]
+                asset_id = arguments["assets"][0]
 
-            # If arguments came from agent state input_assets, let's resolve it.
+            # If arguments came from agent state input_assets, resolve URI.
             if "_state" in arguments and asset_id:
                 state = arguments["_state"]
                 for a in state.input_assets:
@@ -73,9 +97,9 @@ class TerraMindAdapter(BaseModelAdapter):
                 asset_uri = arguments["asset_uri"]
 
             if not asset_uri:
-                 return {"_error": f"Could not resolve asset '{asset_id}'.", "_error_type": "ValueError", "_retryable": False}
+                return {"_error": f"Could not resolve asset '{asset_id}'.", "_error_type": "ValueError", "_retryable": False}
 
-            modality = arguments.get("modality", "S2L2A")
+            modality = arguments.get("modality", "RGB")  # default to RGB not S2L2A
             data = {"modality": modality}
 
             if cap == "terramind_embedding":
@@ -87,7 +111,7 @@ class TerraMindAdapter(BaseModelAdapter):
                 if "band_indices" in arguments:
                     data["band_indices"] = arguments["band_indices"]
             elif cap == "terramind_generate":
-                data["output_modalities"] = arguments.get("output_modalities", "S1GRD,LULC")
+                data["output_modalities"] = arguments.get("output_modalities", "S1GRD")
                 if "timesteps" in arguments:
                     data["timesteps"] = str(arguments["timesteps"])
                 if "standardize" in arguments:

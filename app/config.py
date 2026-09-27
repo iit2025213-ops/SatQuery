@@ -23,14 +23,14 @@ class Settings(BaseSettings):
         default=2, ge=0, description="Max retries for OpenAI API calls"
     )
     openai_max_tokens_decide: int = Field(
-        default=800, ge=1, description="Max output tokens for decide() calls"
+        default=2000, ge=1, description="Max output tokens for decide() calls"
     )
     openai_max_tokens_synthesize: int = Field(
         default=1200, ge=1, description="Max output tokens for synthesize() calls"
     )
 
     # --- Agent limits ---
-    max_steps: int = Field(default=20, ge=1, description="Maximum agent loop steps")
+    max_steps: int = Field(default=25, ge=1, description="Maximum agent loop steps")
     max_replans: int = Field(default=3, ge=0, description="Maximum replanning attempts")
     max_retries_per_task: int = Field(
         default=2, ge=0, description="Maximum retries per failed capability"
@@ -48,15 +48,14 @@ class Settings(BaseSettings):
     change_detection_api_key: str = Field(default="", description="Change Detection API key")
     change_detection_timeout_seconds: float = Field(default=600, ge=1, description="Change Detection request timeout")
 
-    # Prithvi (multispectral foundation model)
-    prithvi_endpoint: str = Field(default="", description="Prithvi inference endpoint URL")
-    prithvi_api_key: str = Field(default="", description="Prithvi API key")
-    prithvi_timeout_seconds: int = Field(default=1200, ge=1, description="Prithvi request timeout")
+    # Prithvi / SARMAE (retired — kept for env-var backward compatibility)
+    prithvi_endpoint: str = Field(default="", description="[RETIRED] Prithvi endpoint")
+    prithvi_api_key: str = Field(default="", description="[RETIRED] Prithvi API key")
+    prithvi_timeout_seconds: int = Field(default=1200, ge=1, description="[RETIRED]")
 
-    # SARMAE (SAR analysis)
-    sarmae_endpoint: str = Field(default="", description="SARMAE inference endpoint URL")
-    sarmae_api_key: str = Field(default="", description="SARMAE API key")
-    sarmae_timeout_seconds: int = Field(default=1200, ge=1, description="SARMAE request timeout")
+    sarmae_endpoint: str = Field(default="", description="[RETIRED] SARMAE endpoint")
+    sarmae_api_key: str = Field(default="", description="[RETIRED] SARMAE API key")
+    sarmae_timeout_seconds: int = Field(default=1200, ge=1, description="[RETIRED]")
 
     # TerraMind (multimodal EO)
     terramind_endpoint: str = Field(default="", description="TerraMind inference endpoint URL")
