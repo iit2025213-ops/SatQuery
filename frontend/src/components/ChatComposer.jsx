@@ -38,7 +38,10 @@ export default function ChatComposer({
       layout
       transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
       className={`chatbar-composer ${isDashboard ? 'card' : ''}`} 
-      onSubmit={onSubmit} 
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit(queryText);
+      }} 
       style={{ 
         position: 'relative', 
         width: '100%', 
@@ -154,7 +157,7 @@ export default function ChatComposer({
               if (e.nativeEvent.isComposing) return;
               if (e.key === 'Enter' && !e.shiftKey) { 
                 e.preventDefault(); 
-                onSubmit(e); 
+                onSubmit(queryText); 
               } 
             }}
             disabled={submitting}
