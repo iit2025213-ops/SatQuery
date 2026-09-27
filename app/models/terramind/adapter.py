@@ -99,7 +99,9 @@ class TerraMindAdapter(BaseModelAdapter):
             if not asset_uri:
                 return {"_error": f"Could not resolve asset '{asset_id}'.", "_error_type": "ValueError", "_retryable": False}
 
-            modality = arguments.get("modality", "RGB")  # default to RGB not S2L2A
+            # We convert all inputs to 3-band 8-bit PNGs locally before sending to LitServe
+            # Therefore, the input modality is ALWAYS RGB, regardless of what the LLM assumes
+            modality = "RGB"
             data = {"modality": modality}
 
             if cap == "terramind_embedding":

@@ -57,7 +57,15 @@ class TerraMindClient(RemoteModelClient):
                         img_resp = await client.get(file_path)
                         img_resp.raise_for_status()
                         raw_bytes = img_resp.content
-                        
+                    else:
+                        with open(file_path, "rb") as f:
+                            raw_bytes = f.read()
+                            
+                    from app.models.change_detection.preprocess import to_rgb8_png
+                    try:
+                        raw_bytes = to_rgb8_png(raw_bytes, max_side=2048)
+                        filename = "image.png"
+                    except Exception:
                         import os
                         from urllib.parse import urlparse
                         parsed_url = urlparse(file_path)
@@ -65,12 +73,8 @@ class TerraMindClient(RemoteModelClient):
                         if not filename:
                             filename = "image.png"
 
-                        files = {"file": (filename, raw_bytes, "application/octet-stream")}
-                        response = await client.post(url, data=data, files=files, headers=headers)
-                    else:
-                        with open(file_path, "rb") as f:
-                            files = {"file": (file_path, f, "application/octet-stream")}
-                            response = await client.post(url, data=data, files=files, headers=headers)
+                    files = {"file": (filename, raw_bytes, "application/octet-stream")}
+                    response = await client.post(url, data=data, files=files, headers=headers)
 
             except httpx.TimeoutException:
                 raise ModelTimeoutError(self.model_name, self.timeout_seconds)
