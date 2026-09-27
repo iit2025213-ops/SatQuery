@@ -73,7 +73,7 @@ class ChangeDetectionClient(RemoteModelClient):
                 
                 before_b64 = base64.b64encode(before_bytes).decode("utf-8")
                 after_b64 = base64.b64encode(after_bytes).decode("utf-8")
-            except ImagePreparationError as exc:
+            except Exception as exc:
                 raise ModelConnectionError(self.model_name, f"Cannot prepare image pair: {exc}")
 
         # Override payload to pass base64 directly to _build_request

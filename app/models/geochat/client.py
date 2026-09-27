@@ -56,24 +56,26 @@ class GeoChatClient(RemoteModelClient):
                     try:
                         from app.models.change_detection.preprocess import to_rgb8_png
                         raw_bytes = to_rgb8_png(raw_bytes, max_side=2048)
-                    except Exception:
-                        pass  # Non-fatal: send raw bytes as-is
+                    except Exception as e:
+                        raise ValueError(f"Failed to preprocess image: {e}")
 
                     b64 = base64.b64encode(raw_bytes).decode("utf-8")
                     images.append(b64)
                     continue
-                except Exception:
-                    continue
+                except Exception as e:
+                    raise RuntimeError(f"Failed to load HTTP asset {uri}: {e}")
 
 
             # Local file fallback
             if not os.path.exists(uri):
-                continue
+                raise FileNotFoundError(f"Local file {uri} does not exist")
             loaded = OpenAIProvider._load_image_bytes_for_llm(uri)
             if loaded:
                 raw_bytes, mime = loaded
                 b64 = base64.b64encode(raw_bytes).decode("utf-8")
                 images.append(b64)
+            else:
+                raise RuntimeError(f"Failed to load or convert local file {uri}")
 
         body = {
             "images": images,

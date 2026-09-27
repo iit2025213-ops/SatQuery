@@ -106,7 +106,11 @@ class GPTVisionAdapter(BaseModelAdapter):
             # Max 2048 px for GPT-4 Vision
             image_bytes = to_rgb8_png(image_bytes, max_side=2048)
         except Exception as conv_err:
-            logger.warning("TIFF auto-conversion check failed (non-fatal): %s", conv_err)
+            return {
+                "_error": f"Image preprocessing failed (unsupported format or corrupted): {conv_err}",
+                "_error_type": "ImageProcessingError",
+                "_retryable": False,
+            }
 
         b64 = base64.b64encode(image_bytes).decode("utf-8")
 

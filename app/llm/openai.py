@@ -805,6 +805,10 @@ class OpenAIProvider(LLMProvider):
         for uri in image_uris:
             loaded = cls._load_image_bytes_for_llm(uri)
             if loaded is None:
+                content_blocks.append({
+                    "type": "text",
+                    "text": f"[WARNING: System failed to load or convert image asset: {uri}]"
+                })
                 continue
 
             raw_bytes, mime = loaded
