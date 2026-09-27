@@ -326,18 +326,29 @@ async def chat_interactive(
                     async with httpx.AsyncClient() as http_client:
                         for idx in list(required_indices):
                             pairs = []
-                            if before_scene and after_scene and before_scene != after_scene:
+                            if period_start and period_end and period_start != period_end:
+                                d1_end = (datetime.strptime(period_start, "%Y-%m-%d") + timedelta(days=90)).strftime("%Y-%m-%d")
+                                d2_start = (datetime.strptime(period_end, "%Y-%m-%d") - timedelta(days=90)).strftime("%Y-%m-%d")
                                 pairs = [
-                                    (before_scene, f"{idx} — Start of period (before)"),
-                                    (after_scene,  f"{idx} — End of period (after)"),
+                                    (None, f"{idx} — Start of period (before)", period_start, d1_end),
+                                    (None, f"{idx} — End of period (after)", d2_start, period_end),
+                                ]
+                            elif before_scene and after_scene and before_scene != after_scene:
+                                pairs = [
+                                    (before_scene, f"{idx} — Start of period (before)", None, None),
+                                    (after_scene,  f"{idx} — End of period (after)", None, None),
                                 ]
                             elif after_scene:
-                                pairs = [(after_scene, f"{idx} — Current snapshot")]
+                                pairs = [(after_scene, f"{idx} — Current snapshot", None, None)]
 
-                            for scene_id, caption in pairs:
+                            for scene_id, caption, d_start, d_end in pairs:
                                 try:
                                     thumb_url = await gee_connector.compute_index_thumbnail_url(
-                                        scene_id, request.aoi, idx
+                                        scene_id=scene_id, 
+                                        aoi_geojson=request.aoi, 
+                                        index_name=idx,
+                                        date_start=d_start,
+                                        date_end=d_end
                                     )
                                     if thumb_url:
                                         resp = await http_client.get(thumb_url, timeout=30.0)

@@ -485,10 +485,12 @@ class GEEConnector:
 
     async def compute_index_thumbnail_url(
         self,
-        scene_id: str,
+        scene_id: Optional[str],
         aoi_geojson: dict,
         index_name: str,
         dimensions: int = 1024,
+        date_start: Optional[str] = None,
+        date_end: Optional[str] = None,
     ) -> Optional[str]:
         """
         Compute an index (NDVI, NDWI, NDBI, NBR) and return a signed PNG thumbnail URL 
@@ -499,14 +501,23 @@ class GEEConnector:
 
         try:
             aoi_geom = self.geojson_to_ee_geometry(aoi_geojson)
-            image = ee.Image(scene_id)
 
-            if "COPERNICUS" in scene_id or "S2" in scene_id:
+            if scene_id:
+                image = ee.Image(scene_id)
+                if "COPERNICUS" in scene_id or "S2" in scene_id:
+                    green, red, nir = "B3", "B4", "B8"
+                    swir1, swir2 = "B11", "B12"
+                else:
+                    green, red, nir = "SR_B3", "SR_B4", "SR_B5"
+                    swir1, swir2 = "SR_B6", "SR_B7"
+            else:
+                image = (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+                         .filterBounds(aoi_geom)
+                         .filterDate(date_start, date_end)
+                         .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", 30))
+                         .median())
                 green, red, nir = "B3", "B4", "B8"
                 swir1, swir2 = "B11", "B12"
-            else:
-                green, red, nir = "SR_B3", "SR_B4", "SR_B5"
-                swir1, swir2 = "SR_B6", "SR_B7"
 
             index_name = index_name.upper()
             if index_name == "NDVI":
