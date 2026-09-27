@@ -75,7 +75,6 @@ class GPTVisionAdapter(BaseModelAdapter):
                     resp = await http_client.get(asset_uri)
                     resp.raise_for_status()
                     image_bytes = resp.content
-                    b64 = base64.b64encode(image_bytes).decode("utf-8")
             except Exception as e:
                 return {
                     "_error": f"Failed to download image from {asset_uri}: {e}",
@@ -93,13 +92,45 @@ class GPTVisionAdapter(BaseModelAdapter):
             try:
                 with open(asset_uri, "rb") as f:
                     image_bytes = f.read()
-                b64 = base64.b64encode(image_bytes).decode("utf-8")
             except Exception as e:
                 return {
                     "_error": f"Failed to read image: {e}",
                     "_error_type": "FileReadError",
                     "_retryable": False,
                 }
+
+        # --- Auto-convert TIFF/GeoTIFF to PNG for OpenAI Vision API ---
+        # OpenAI Vision only accepts PNG/JPEG/GIF/WEBP. If the image is
+        # a TIFF (common for satellite imagery), convert it to PNG first.
+        try:
+            from PIL import Image as _PILImage
+            import io as _io
+            _probe = _PILImage.open(_io.BytesIO(image_bytes))
+            if _probe.format in ("TIFF", "MPO") or (
+                asset_uri and any(ext in asset_uri.lower() for ext in (".tif", ".tiff"))
+            ):
+                logger.info("GPT Vision: auto-converting %s to PNG for API compatibility", _probe.format)
+                import numpy as np
+                arr = np.array(_probe)
+                # Percentile stretch for 16-bit imagery
+                if arr.dtype != np.uint8:
+                    arr = arr.astype("float32")
+                    lo = float(np.percentile(arr, 2))
+                    hi = float(np.percentile(arr, 98))
+                    if hi <= lo:
+                        hi = lo + 1.0
+                    arr = ((arr - lo) / (hi - lo) * 255.0).clip(0, 255).astype("uint8")
+                if arr.ndim == 3 and arr.shape[-1] > 3:
+                    arr = arr[..., :3]
+                out_img = _PILImage.fromarray(arr).convert("RGB")
+                buf = _io.BytesIO()
+                out_img.save(buf, format="PNG")
+                image_bytes = buf.getvalue()
+        except Exception as conv_err:
+            logger.warning("TIFF auto-conversion check failed (non-fatal): %s", conv_err)
+
+        b64 = base64.b64encode(image_bytes).decode("utf-8")
+
 
         prompt = ""
         cap = arguments.get("_capability", "")

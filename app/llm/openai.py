@@ -567,6 +567,12 @@ class OpenAIProvider(LLMProvider):
         # Section 3: Rock-solid model I/O reference
         prompt_parts.append(
             "\n\n## 3. SPECIALIST MODEL REFERENCE (ROCK-SOLID I/O)\n\n"
+            "**CRITICAL FORMAT NOTE:** ALL specialist models below accept ANY image format "
+            "including GeoTIFF (.tif/.tiff), PNG, JPEG, and WEBP. The backend automatically "
+            "converts TIFF to PNG internally when needed. You must NEVER refuse to analyze "
+            "an image because of its format. TIFF and GeoTIFF are the standard formats for "
+            "satellite imagery and are fully supported by every tool.\n\n"
+
             "### 3a. GeoChat (Visual Question Answering)\n"
             "- Capability Name: geochat_analyze\n"
             "- What it does: Takes a satellite image and a natural-language question, "
