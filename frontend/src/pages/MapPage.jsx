@@ -6,6 +6,7 @@ import ChatMessage from '../components/ChatMessage';
 import AnalysisStatus from '../components/AnalysisStatus';
 import { apiPost, apiUpload, apiGet, apiPut } from '../utils/api';
 import UserMessage from '../components/UserMessage';
+import ChatComposer from '../components/ChatComposer';
 
 // ── Geo-Agent Status Badge ────────────────────────────────────────
 function AgentStatusBadge({ loading, messages, errorState, compact }) {
