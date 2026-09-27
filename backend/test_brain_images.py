@@ -18,6 +18,7 @@ import os
 import time
 import argparse
 import httpx
+import mimetypes
 
 # ── Config ────────────────────────────────────────────────────────────────────
 OUR_BACKEND = "http://localhost:8000"
@@ -79,7 +80,9 @@ def step_upload(filepath: str, token: str) -> str:
     info(f"POST {OUR_BACKEND}/api/v1/assets")
 
     with open(filepath, "rb") as f:
-        files = {"file": (filename, f, "image/jpeg")}
+        content_type, _ = mimetypes.guess_type(filepath)
+        content_type = content_type or "application/octet-stream"
+        files = {"file": (filename, f, content_type)}
         data  = {"modality": "optical"}
         
         resp = httpx.post(
