@@ -161,11 +161,6 @@ def build_default_registry() -> CapabilityRegistry:
     registry.register(
         BUILTIN_CAPABILITIES["calculate_changed_area"], AreaCalculationAdapter
     )
-    registry.register(
-        BUILTIN_CAPABILITIES["generate_change_map"], ValidationAdapter
-    )
-    registry.register(
-        BUILTIN_CAPABILITIES["generate_timelapse"], ValidationAdapter
-    )
+    # No stubs
 
     return registry

@@ -225,9 +225,19 @@ class AgentController:
         """Execute independent capabilities concurrently."""
         self.trace.start_timer()
 
-        observations = await self._parallel.run_parallel(
-            decision.parallel_capabilities, state
-        )
+        try:
+            observations = await self._parallel.run_parallel(
+                decision.parallel_capabilities, state
+            )
+        except ValueError as exc:
+            self.trace.stop_timer()
+            logger.warning("Invalid parallel decision at step %d: %s", self._steps, exc)
+            self.trace.record(
+                action="INVALID_DECISION",
+                status="rejected",
+                rationale=str(exc),
+            )
+            return
 
         latency = self.trace.stop_timer()
 
