@@ -684,7 +684,8 @@ class OpenAIProvider(LLMProvider):
             "{\"capability\":\"ground_region\",\"arguments\":{\"asset\":\"<id>\"}}]'\n"
             "- Sequential ONLY when step B requires output from step A.\n"
             "- Modality Constraints: Never call optical-only capabilities on SAR data.\n"
-            "- Asset References: Always reference the exact asset_id from input_assets."
+            "- Asset References: Always reference the exact asset_id from input_assets.\n"
+            "- FATAL AUTH ERROR: If any Observation has error_type=auth_error or contains authentication failed or Check API key, the backend service is DOWN. Do NOT retry or call any other capability. Immediately return ActionType.FINAL with final_answer explaining the service is unavailable due to expired API credentials."
         )
 
         return "".join(prompt_parts)
