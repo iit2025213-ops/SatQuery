@@ -55,7 +55,7 @@ class GeoChatClient(RemoteModelClient):
                     # Auto-convert TIFF to PNG — GeoChat expects standard image formats
                     try:
                         from app.models.change_detection.preprocess import to_rgb8_png
-                        raw_bytes = to_rgb8_png(raw_bytes, max_side=2048)
+                        raw_bytes = to_rgb8_png(raw_bytes, max_side=1024)
                     except Exception as e:
                         raise ValueError(f"Failed to preprocess image: {e}")
 
