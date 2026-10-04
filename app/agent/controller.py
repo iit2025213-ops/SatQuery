@@ -129,6 +129,13 @@ class AgentController:
             # 4. Record decision in history
             state.current_decision = decision.model_dump(mode="json")
             state.decision_history.append(state.current_decision)
+            logger.info(
+                "Step %d decision: action=%s capability=%s reason=%s",
+                state.step_count,
+                decision.action.value,
+                decision.capability or "(none)",
+                (decision.reason or "")[:120],
+            )
 
             # 4.5 Process Specialist Evaluations (Closed-Loop Vision)
             if decision.specialist_evaluations:
