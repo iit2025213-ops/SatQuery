@@ -52,30 +52,28 @@ class GeoChatClient(RemoteModelClient):
                         resp.raise_for_status()
                         raw_bytes = resp.content
 
-                    # Auto-convert TIFF to PNG — GeoChat expects standard image formats
-                    try:
-                        from app.models.change_detection.preprocess import to_rgb8_png
-                        raw_bytes = to_rgb8_png(raw_bytes, max_side=1024)
-                    except Exception as e:
-                        raise ValueError(f"Failed to preprocess image: {e}")
-
-                    b64 = base64.b64encode(raw_bytes).decode("utf-8")
-                    images.append(b64)
-                    continue
                 except Exception as e:
                     raise RuntimeError(f"Failed to load HTTP asset {uri}: {e}")
 
 
             # Local file fallback
-            if not os.path.exists(uri):
-                raise FileNotFoundError(f"Local file {uri} does not exist")
-            loaded = OpenAIProvider._load_image_bytes_for_llm(uri)
-            if loaded:
-                raw_bytes, mime = loaded
-                b64 = base64.b64encode(raw_bytes).decode("utf-8")
-                images.append(b64)
             else:
-                raise RuntimeError(f"Failed to load or convert local file {uri}")
+                if not os.path.exists(uri):
+                    raise FileNotFoundError(f"Local file {uri} does not exist")
+                loaded = OpenAIProvider._load_image_bytes_for_llm(uri)
+                if not loaded:
+                    raise RuntimeError(f"Failed to load local file {uri}")
+                raw_bytes = loaded[0]
+
+            # Resize EVERYTHING sent to GeoChat to max 2048
+            try:
+                from app.models.change_detection.preprocess import to_rgb8_png
+                raw_bytes = to_rgb8_png(raw_bytes, max_side=2048)
+            except Exception as e:
+                raise ValueError(f"Failed to resize image for GeoChat: {e}")
+
+            b64 = base64.b64encode(raw_bytes).decode("utf-8")
+            images.append(b64)
 
         body = {
             "images": images,
