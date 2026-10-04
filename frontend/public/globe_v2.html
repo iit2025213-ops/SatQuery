@@ -789,7 +789,9 @@ footer::before{
     });
     [].slice.call(document.querySelectorAll('a[href^="#"]')).forEach(function (a) {
       a.addEventListener("click", function (e) {
-        var el = document.querySelector(a.getAttribute("href"));
+        var href = a.getAttribute("href");
+        if (!href || href === "#") return;
+        var el = document.querySelector(href);
         if (!el) return;
         e.preventDefault();
         links.classList.remove("open"); burger.classList.remove("x");

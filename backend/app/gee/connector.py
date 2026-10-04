@@ -70,6 +70,35 @@ class GEEConnector:
     # Authentication
     # ------------------------------------------------------------------
 
+    def _resolve_key_path(self) -> Optional[str]:
+        """
+        Resolve the service account key file path.
+
+        Supports two modes:
+        1. GEE_SERVICE_ACCOUNT_KEY_JSON env var — the raw JSON string is
+           written to a temp file and that path is returned.  This is the
+           recommended approach for cloud hosts (Render, Railway, …) where
+           you cannot store files in the repo.
+        2. Falling back to self.service_account_key_path (the file on disk).
+        """
+        import tempfile
+
+        key_json_env = os.environ.get("GEE_SERVICE_ACCOUNT_KEY_JSON")
+        if key_json_env:
+            try:
+                # Validate it is proper JSON
+                json.loads(key_json_env)
+                tmp_path = os.path.join(tempfile.gettempdir(), "gee_sa_key.json")
+                with open(tmp_path, "w") as f:
+                    f.write(key_json_env)
+                logger.info(f"Wrote GEE key from env var to {tmp_path}")
+                return tmp_path
+            except json.JSONDecodeError:
+                logger.error("GEE_SERVICE_ACCOUNT_KEY_JSON env var is not valid JSON")
+                return None
+
+        return self.service_account_key_path
+
     async def authenticate(self) -> bool:
         """
         Authenticate to GEE using a service account key file.
@@ -81,9 +110,11 @@ class GEEConnector:
         if self.authenticated:
             return True
 
-        if not self.service_account_key_path or not os.path.exists(self.service_account_key_path):
+        key_path = self._resolve_key_path()
+
+        if not key_path or not os.path.exists(key_path):
             logger.error(
-                f"GEE service account key not found at: {self.service_account_key_path}"
+                f"GEE service account key not found at: {key_path}"
             )
             return False
 
@@ -93,7 +124,7 @@ class GEEConnector:
 
         try:
             # Read the key file to extract the service account email
-            with open(self.service_account_key_path, "r") as f:
+            with open(key_path, "r") as f:
                 key_data = json.load(f)
 
             service_account_email = key_data.get("client_email")
@@ -103,7 +134,7 @@ class GEEConnector:
 
             credentials = ee.ServiceAccountCredentials(
                 service_account_email,
-                self.service_account_key_path,
+                key_path,
             )
 
             ee.Initialize(credentials=credentials, project=self.project_id)
